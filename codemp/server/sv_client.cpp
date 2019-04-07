@@ -1438,6 +1438,10 @@ void SV_ClientThink (client_t *cl, usercmd_t *cmd) {
 		return;		// may have been kicked during the last usercmd
 	}
 
+    svs.clients[cl - svs.clients].cmdIndex++;
+    svs.clients[cl - svs.clients].cmdStats[svs.clients[cl - svs.clients].cmdIndex & CMD_MASK].serverTime = svs.clients[cl - svs.clients].lastUsercmd.serverTime;
+    svs.clients[cl - svs.clients].cmdStats[svs.clients[cl - svs.clients].cmdIndex & CMD_MASK].thinkTime = Sys_Milliseconds();
+
 	if ( cl->lastUserInfoCount >= INFO_CHANGE_MAX_COUNT && cl->lastUserInfoChange < svs.time && cl->userinfoPostponed[0] )
 	{ // Update postponed userinfo changes now
 		char info[MAX_INFO_STRING];

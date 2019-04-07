@@ -1137,6 +1137,7 @@ static void SV_Status_f( void )
 	const char		*s;
 	int				ping;
 	char			state[32];
+    int		        now = Sys_Milliseconds();
 
 	// make sure server is running
 	if ( !com_sv_running->integer ) {
@@ -1180,10 +1181,16 @@ static void SV_Status_f( void )
 	Com_Printf( "players : %i %s, %i %s(%i max)\n", humans, (humans == 1 ? "human" : "humans"), bots, (bots == 1 ? "bot" : "bots"), sv_maxclients->integer - sv_privateClients->integer );
 	Com_Printf( "uptime  : %s\n", SV_CalcUptime() );
 
-	Com_Printf("cl score ping rate  address                name \n");
-	Com_Printf("-- ----- ---- ----- ---------------------- ---------------\n");
+	Com_Printf("cl score ping rate  address                fps packets name \n");
+	Com_Printf("-- ----- ---- ----- ---------------------- --- ------- ---------------\n");
 
 	for (i=0,cl=svs.clients ; i < sv_maxclients->integer ; i++,cl++) {
+        int			lastCmdTime;
+        int			fps = 0;
+        int			lastThinkTime = 0;
+        int			packets = 0;
+        int			j;
+
 		if ( !cl->state )
 			continue;
 
@@ -1199,7 +1206,24 @@ static void SV_Status_f( void )
 		ps = SV_GameClientNum( i );
 		s = NET_AdrToString( cl->netchan.remoteAddress );
 
-		Com_Printf("%2i %5i %s %5i %22s %s^7\n", i, ps->persistant[PERS_SCORE], state, cl->rate, s, cl->name);//No need for truncation "feature" if we move name to end
+        lastCmdTime = cl->cmdStats[cl->cmdIndex & CMD_MASK].serverTime;
+
+        for (j = cl->cmdIndex; ((cl->cmdIndex - j + 1) & CMD_MASK) != 0; j--) {
+            ucmdStat_t* stat = &cl->cmdStats[j & CMD_MASK];
+
+            if (stat->serverTime + 1000 >= lastCmdTime) {
+                fps++;
+            }
+
+            if (stat->thinkTime + 1000 >= now) {
+                if (stat->thinkTime != lastThinkTime) {
+                    lastThinkTime = stat->thinkTime;
+                    packets++;
+                }
+            }
+        }
+
+		Com_Printf("%2i %5i %s %5i %22s %3i %7i %s^7\n", i, ps->persistant[PERS_SCORE], state, cl->rate, s, fps, packets, cl->name);//No need for truncation "feature" if we move name to end
 	}
 	Com_Printf ("\n");
 }

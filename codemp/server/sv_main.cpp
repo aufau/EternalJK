@@ -1286,6 +1286,10 @@ void SV_Frame( int msec ) {
 
 	// send a heartbeat to the master if needed
 	SV_MasterHeartbeat();
+
+    Com_Printf("A : %i\n", svs.clients->lastUsercmd.serverTime - svs.time);
+    Com_Printf("B : %i\n", svs.clients->lastUsercmd.serverTime - svs.time + svs.clients->ping);
+    Com_Printf("Ping : %i\n", svs.clients->ping);
 }
 
 //============================================================================

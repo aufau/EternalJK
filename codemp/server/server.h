@@ -134,6 +134,12 @@ typedef struct {
 	int			botReliableAcknowledge; // for bots, need to maintain a separate reliableAcknowledge to record server messages into the demo file
 } demoInfo_t;
 
+typedef struct ucmdStat_s {
+    int		serverTime;
+    int		thinkTime;
+} ucmdStat_t;
+
+#define CMD_MASK 1023
 
 typedef struct client_s {
 	clientState_t	state;
@@ -194,6 +200,8 @@ typedef struct client_s {
 	qboolean		csUpdated[MAX_CONFIGSTRINGS];
 
 	demoInfo_t		demo;
+    ucmdStat_t	    cmdStats[1024];
+    int	            cmdIndex;
 } client_t;
 
 //=============================================================================
