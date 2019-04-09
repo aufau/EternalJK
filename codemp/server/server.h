@@ -200,8 +200,10 @@ typedef struct client_s {
 	qboolean		csUpdated[MAX_CONFIGSTRINGS];
 
 	demoInfo_t		demo;
-    ucmdStat_t	    cmdStats[1024];
+    ucmdStat_t	    cmdStats[CMD_MASK + 1];
     int	            cmdIndex;
+    int             delayCount;
+    int             delayStats;
 } client_t;
 
 //=============================================================================

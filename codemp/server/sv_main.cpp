@@ -1287,8 +1287,24 @@ void SV_Frame( int msec ) {
 	// send a heartbeat to the master if needed
 	SV_MasterHeartbeat();
 
-    Com_Printf("A : %i\n", svs.clients->lastUsercmd.serverTime - svs.time);
-    Com_Printf("B : %i\n", svs.clients->lastUsercmd.serverTime - svs.time + svs.clients->ping);
+    Com_Printf("A : %i\n", svs.clients->lastUsercmd.serverTime - svs.time + 50);
+
+    static int lastTime = 0;
+
+    svs.clients->delayCount++;
+    svs.clients->delayStats += svs.clients->lastUsercmd.serverTime - svs.time + 50;
+
+    if (svs.time > lastTime + 1000) // this will be the time check later.
+    {
+        Com_Printf("AVG : %f\n", svs.clients->delayStats / (float)svs.clients->delayCount);
+
+        svs.clients->delayCount = 0;
+        svs.clients->delayStats = 0;
+
+        lastTime = svs.time;
+    }
+
+    //Com_Printf("B : %i\n", svs.clients->lastUsercmd.serverTime - svs.time + svs.clients->ping + 50);
     Com_Printf("Ping : %i\n", svs.clients->ping);
 }
 
