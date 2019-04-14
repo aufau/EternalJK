@@ -59,11 +59,29 @@ playerState_t *SV_GameClientNum( int num ) {
 	return ps;
 }
 
-svEntity_t	*SV_SvEntityForGentity( sharedEntity_t *gEnt ) {
-	if ( !gEnt || gEnt->s.number < 0 || gEnt->s.number >= MAX_GENTITIES ) {
-		Com_Error( ERR_DROP, "SV_SvEntityForGentity: bad gEnt" );
-	}
-	return &sv.svEntities[ gEnt->s.number ];
+svEntity_t *SV_SvEntityForGentity(sharedEntity_t* gEnt)
+{
+    int	num = -1;
+
+    if (!gEnt)
+    {
+        Com_Error(ERR_DROP, "SV_SvEntityForGentity: null gEnt");
+    }
+
+    num = SV_NumForGentity(gEnt);
+
+    // fallback to s.number if gEnt is not an element of gentities array
+    if ((unsigned)num >= (unsigned)MAX_GENTITIES)
+    {
+        num = gEnt->s.number;
+    }
+
+    if ((unsigned)num >= (unsigned)MAX_GENTITIES)
+    {
+        Com_Error(ERR_DROP, "SV_SvEntityForGentity: bad gEnt");
+    }
+
+    return &sv.svEntities[num];
 }
 
 sharedEntity_t *SV_GEntityForSvEntity( svEntity_t *svEnt ) {
