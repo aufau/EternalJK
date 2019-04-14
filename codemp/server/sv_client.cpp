@@ -1438,9 +1438,26 @@ void SV_ClientThink (client_t *cl, usercmd_t *cmd) {
 		return;		// may have been kicked during the last usercmd
 	}
 
+    static int lastTime = 0;
+
     cl->cmdIndex++;
     cl->cmdStats[cl->cmdIndex & CMD_MASK].serverTime = cmd->serverTime;
     cl->cmdStats[cl->cmdIndex & CMD_MASK].thinkTime = Sys_Milliseconds();
+
+    cl->delayCount++;
+    cl->delaySum += cmd->serverTime - sv.time + 50;
+    cl->pingSum += cl->ping;
+
+    if (svs.time > lastTime + 1000)
+    {
+        cl->timeNudge = (((cl->delaySum / (float)cl->delayCount) + (cl->pingSum / (float)cl->delayCount) + 11) * -1) + 27;
+
+        cl->delayCount = 0;
+        cl->delaySum = 0;
+        cl->pingSum = 0;
+
+        lastTime = svs.time;
+    }
 
 	if ( cl->lastUserInfoCount >= INFO_CHANGE_MAX_COUNT && cl->lastUserInfoChange < svs.time && cl->userinfoPostponed[0] )
 	{ // Update postponed userinfo changes now

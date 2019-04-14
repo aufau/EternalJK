@@ -843,66 +843,6 @@ void SV_PacketEvent( netadr_t from, msg_t *msg ) {
 	NET_OutOfBandPrint( NS_SERVER, from, "disconnect" );
 }
 
-
-/*
-===================
-SV_CalcTimeNudges
-
-Updates the cl->timenudge variables
-===================
-*/
-void SV_CalcTimeNudges(void)
-{
-    int			i;
-    client_t *cl;
-    int tmpTimeNudge;
-
-    static int lastTime = 0;
-
-    for (i = 0; i < sv_maxclients->integer; i++) 
-    {
-        cl = &svs.clients[i];
-
-        if (cl->state != CS_ACTIVE)
-        {
-            cl->timeNudge = 1;
-
-            continue;
-        }
-
-        if (!cl->gentity)
-        {
-            cl->timeNudge = 2;
-
-            continue;
-        }
-
-        if (cl->gentity->r.svFlags & SVF_BOT)
-        {
-            cl->timeNudge = 3;
-
-            continue;
-        }
-
-        cl->delayCount++;
-        cl->delaySum += cl->lastUsercmd.serverTime - sv.time + 50;
-        cl->pingSum += cl->ping;
-
-        if (svs.time > lastTime + 1000)
-        {
-            tmpTimeNudge = (cl->delaySum / (float)cl->delayCount) + (cl->pingSum / (float)cl->delayCount) + 11;
-
-            cl->timeNudge = tmpTimeNudge * -1;
-
-            cl->delayCount = 0;
-            cl->delaySum = 0;
-            cl->pingSum = 0;
-
-            lastTime = svs.time;
-        }
-    }
-}
-
 /*
 ===================
 SV_CalcPings
@@ -929,6 +869,7 @@ void SV_CalcPings( void ) {
 		}
 		if ( cl->gentity->r.svFlags & SVF_BOT ) {
 			cl->ping = 0;
+            cl->timeNudge = 0;
 			continue;
 		}
 
@@ -1337,9 +1278,6 @@ void SV_Frame( int msec ) {
 
 	// check timeouts
 	SV_CheckTimeouts();
-
-    //Get timeNudge
-    SV_CalcTimeNudges();
 
 	// send messages back to the clients
 	SV_SendClientMessages();
