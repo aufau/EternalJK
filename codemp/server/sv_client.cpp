@@ -1445,12 +1445,12 @@ void SV_ClientThink (client_t *cl, usercmd_t *cmd) {
     cl->cmdStats[cl->cmdIndex & CMD_MASK].thinkTime = Sys_Milliseconds();
 
     cl->delayCount++;
-    cl->delaySum += cmd->serverTime - sv.time + 50;
+    cl->delaySum += cmd->serverTime - sv.time;
     cl->pingSum += cl->ping;
 
     if (svs.time > lastTime + 1000)
     {
-        cl->timeNudge = (((cl->delaySum / (float)cl->delayCount) + (cl->pingSum / (float)cl->delayCount) + 11) * -1) + 27;
+        cl->timeNudge = (((cl->delaySum / (float)cl->delayCount) + (cl->pingSum / (float)cl->delayCount) + 11) * -1) + 28.5 - (1000 / sv_fps->integer);
 
         cl->delayCount = 0;
         cl->delaySum = 0;
