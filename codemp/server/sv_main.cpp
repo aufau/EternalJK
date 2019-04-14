@@ -846,6 +846,65 @@ void SV_PacketEvent( netadr_t from, msg_t *msg ) {
 
 /*
 ===================
+SV_CalcTimeNudges
+
+Updates the cl->timenudge variables
+===================
+*/
+void SV_CalcTimeNudges(void)
+{
+    int			i;
+    client_t *cl;
+    int tmpTimeNudge;
+
+    static int lastTime = 0;
+
+    for (i = 0; i < sv_maxclients->integer; i++) 
+    {
+        cl = &svs.clients[i];
+
+        if (cl->state != CS_ACTIVE)
+        {
+            cl->timeNudge = 1;
+
+            continue;
+        }
+
+        if (!cl->gentity)
+        {
+            cl->timeNudge = 2;
+
+            continue;
+        }
+
+        if (cl->gentity->r.svFlags & SVF_BOT)
+        {
+            cl->timeNudge = 3;
+
+            continue;
+        }
+
+        cl->delayCount++;
+        cl->delaySum += cl->lastUsercmd.serverTime - sv.time + 50;
+        cl->pingSum += cl->ping;
+
+        if (svs.time > lastTime + 1000)
+        {
+            tmpTimeNudge = (cl->delaySum / (float)cl->delayCount) + (cl->pingSum / (float)cl->delayCount) + 11;
+
+            cl->timeNudge = tmpTimeNudge * -1;
+
+            cl->delayCount = 0;
+            cl->delaySum = 0;
+            cl->pingSum = 0;
+
+            lastTime = svs.time;
+        }
+    }
+}
+
+/*
+===================
 SV_CalcPings
 
 Updates the cl->ping variables
@@ -1279,6 +1338,9 @@ void SV_Frame( int msec ) {
 	// check timeouts
 	SV_CheckTimeouts();
 
+    //Get timeNudge
+    SV_CalcTimeNudges();
+
 	// send messages back to the clients
 	SV_SendClientMessages();
 
@@ -1286,26 +1348,6 @@ void SV_Frame( int msec ) {
 
 	// send a heartbeat to the master if needed
 	SV_MasterHeartbeat();
-
-    Com_Printf("A : %i\n", svs.clients->lastUsercmd.serverTime - svs.time + 50);
-
-    static int lastTime = 0;
-
-    svs.clients->delayCount++;
-    svs.clients->delayStats += svs.clients->lastUsercmd.serverTime - svs.time + 50;
-
-    if (svs.time > lastTime + 1000) // this will be the time check later.
-    {
-        Com_Printf("AVG : %f\n", svs.clients->delayStats / (float)svs.clients->delayCount);
-
-        svs.clients->delayCount = 0;
-        svs.clients->delayStats = 0;
-
-        lastTime = svs.time;
-    }
-
-    //Com_Printf("B : %i\n", svs.clients->lastUsercmd.serverTime - svs.time + svs.clients->ping + 50);
-    Com_Printf("Ping : %i\n", svs.clients->ping);
 }
 
 //============================================================================

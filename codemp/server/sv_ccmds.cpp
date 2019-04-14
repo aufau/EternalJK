@@ -1181,8 +1181,8 @@ static void SV_Status_f( void )
 	Com_Printf( "players : %i %s, %i %s(%i max)\n", humans, (humans == 1 ? "human" : "humans"), bots, (bots == 1 ? "bot" : "bots"), sv_maxclients->integer - sv_privateClients->integer );
 	Com_Printf( "uptime  : %s\n", SV_CalcUptime() );
 
-	Com_Printf("cl score ping rate  address                fps packets name \n");
-	Com_Printf("-- ----- ---- ----- ---------------------- --- ------- ---------------\n");
+	Com_Printf("cl score ping rate  address                fps packets timeNudge name \n");
+	Com_Printf("-- ----- ---- ----- ---------------------- --- ------- --------- ---------------\n");
 
 	for (i=0,cl=svs.clients ; i < sv_maxclients->integer ; i++,cl++) {
         int			lastCmdTime;
@@ -1223,7 +1223,8 @@ static void SV_Status_f( void )
             }
         }
 
-		Com_Printf("%2i %5i %s %5i %22s %3i %7i %s^7\n", i, ps->persistant[PERS_SCORE], state, cl->rate, s, fps, packets, cl->name);//No need for truncation "feature" if we move name to end
+        // No need for truncation "feature" if we move name to end
+		Com_Printf("%2i %5i %s %5i %22s %3i %7i %9i %s^7\n", i, ps->persistant[PERS_SCORE], state, cl->rate, s, fps, packets, cl->timeNudge, cl->name);
 	}
 	Com_Printf ("\n");
 }
