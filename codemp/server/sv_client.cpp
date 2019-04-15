@@ -1438,27 +1438,6 @@ void SV_ClientThink (client_t *cl, usercmd_t *cmd) {
 		return;		// may have been kicked during the last usercmd
 	}
 
-    static int lastTime = 0;
-
-    cl->cmdIndex++;
-    cl->cmdStats[cl->cmdIndex & CMD_MASK].serverTime = cmd->serverTime;
-    cl->cmdStats[cl->cmdIndex & CMD_MASK].thinkTime = Sys_Milliseconds();
-
-    cl->delayCount++;
-    cl->delaySum += cmd->serverTime - sv.time;
-    cl->pingSum += cl->ping;
-
-    if (svs.time > lastTime + 1000)
-    {
-        cl->timeNudge = (((cl->delaySum / (float)cl->delayCount) + (cl->pingSum / (float)cl->delayCount) + 11) * -1) + 28.5 - (1000 / sv_fps->integer);
-
-        cl->delayCount = 0;
-        cl->delaySum = 0;
-        cl->pingSum = 0;
-
-        lastTime = svs.time;
-    }
-
 	if ( cl->lastUserInfoCount >= INFO_CHANGE_MAX_COUNT && cl->lastUserInfoChange < svs.time && cl->userinfoPostponed[0] )
 	{ // Update postponed userinfo changes now
 		char info[MAX_INFO_STRING];
@@ -1544,10 +1523,12 @@ static void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta ) {
 		oldcmd = cmd;
 	}
 
+    int Sys_Milliseconds_ = Sys_Milliseconds();
+
 	// save time for ping calculation
 	// With sv_pingFix enabled we store the time of the first acknowledge, instead of the last. And we use a time value that is not limited by sv_fps.
 	if (!sv_pingFix->integer || cl->frames[cl->messageAcknowledge & PACKET_MASK].messageAcked == -1)
-		cl->frames[cl->messageAcknowledge & PACKET_MASK].messageAcked = (sv_pingFix->integer ? Sys_Milliseconds() : svs.time);
+		cl->frames[cl->messageAcknowledge & PACKET_MASK].messageAcked = (sv_pingFix->integer ? Sys_Milliseconds_ : svs.time);
 
 	// TTimo
 	// catch the no-cp-yet situation before SV_ClientEnterWorld
@@ -1584,7 +1565,8 @@ static void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta ) {
 	// usually, the first couple commands will be duplicates
 	// of ones we have previously received, but the servertimes
 	// in the commands will cause them to be immediately discarded
-	for ( i =  0 ; i < cmdCount ; i++ ) {
+	for ( i =  0 ; i < cmdCount ; i++ )
+    {
 		// if this is a cmd from before a map_restart ignore it
 		if ( cmds[i].serverTime > cmds[cmdCount-1].serverTime ) {
 			continue;
@@ -1598,6 +1580,32 @@ static void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta ) {
 		if ( cmds[i].serverTime <= cl->lastUsercmd.serverTime ) {
 			continue;
 		}
+
+        
+        if (cl->state == CS_ACTIVE)
+        {
+            static int lastTime = 0;
+
+            cl->cmdIndex++;
+            cl->cmdStats[cl->cmdIndex & CMD_MASK].serverTime = cmds[i].serverTime;
+            cl->cmdStats[cl->cmdIndex & CMD_MASK].thinkTime = Sys_Milliseconds_;
+
+            cl->delayCount++;
+            cl->delaySum += cmds[i].serverTime - sv.time;
+            cl->pingSum += cl->ping;
+
+            if (Sys_Milliseconds_ > lastTime + 1000)
+            {
+                cl->timeNudge = ((cl->delaySum / (float)cl->delayCount) + (cl->pingSum / (float)cl->delayCount) -18 + (1000 / (float)sv_fps->integer)) * -1;
+
+                cl->delayCount = 0;
+                cl->delaySum = 0;
+                cl->pingSum = 0;
+                
+                lastTime = Sys_Milliseconds_;
+            }
+        }
+        
 		SV_ClientThink (cl, &cmds[ i ]);
 	}
 }

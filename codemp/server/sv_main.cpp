@@ -869,7 +869,7 @@ void SV_CalcPings( void ) {
 		}
 		if ( cl->gentity->r.svFlags & SVF_BOT ) {
 			cl->ping = 0;
-            cl->timeNudge = 0;
+            //cl->timeNudge = 0;
 			continue;
 		}
 
