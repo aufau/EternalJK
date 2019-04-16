@@ -869,7 +869,7 @@ void SV_CalcPings( void ) {
 		}
 		if ( cl->gentity->r.svFlags & SVF_BOT ) {
 			cl->ping = 0;
-            //cl->timeNudge = 0;
+            cl->timeNudge = 0;
 			continue;
 		}
 
@@ -900,6 +900,52 @@ void SV_CalcPings( void ) {
 		ps = SV_GameClientNum( i );
 		ps->ping = cl->ping;
 	}
+}
+
+/*
+===================
+SV_CalcTimeNudges
+Updates the cl->timenudge variables
+===================
+*/
+void SV_CalcTimeNudges(void)
+{
+    int			i;
+    client_t* cl;
+
+    for (i = 0; i < sv_maxclients->integer; i++)
+    {
+        cl = &svs.clients[i];
+
+        if (cl->state != CS_ACTIVE)
+        {
+            cl->timeNudge2 = -1;
+
+            continue;
+        }
+
+        if (cl->gentity->r.svFlags & SVF_BOT)
+        {
+            cl->timeNudge2 = -2;
+
+            continue;
+        }
+
+        cl->delayCount2++;
+        cl->delaySum2 += cl->lastUsercmd.serverTime - sv.time;
+        cl->pingSum2 += cl->ping;
+
+        if (svs.time > cl->lastTimetimeNudgeCalculation2 + 1000)
+        {
+            cl->timeNudge2 = ((cl->delaySum2 / (float)cl->delayCount2) + (cl->pingSum2 / (float)cl->delayCount2) + 11 + (1000 / (float)sv_fps->integer)) * -1;
+
+            cl->delayCount2 = 0;
+            cl->delaySum2 = 0;
+            cl->pingSum2 = 0;
+
+            cl->lastTimetimeNudgeCalculation2 = svs.time;
+        }
+    }
 }
 
 /*
@@ -1278,6 +1324,8 @@ void SV_Frame( int msec ) {
 
 	// check timeouts
 	SV_CheckTimeouts();
+
+    SV_CalcTimeNudges();
 
 	// send messages back to the clients
 	SV_SendClientMessages();

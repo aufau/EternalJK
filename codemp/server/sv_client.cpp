@@ -362,6 +362,16 @@ gotnewcl:
 	newcl->lastUserInfoChange = 0; //reset the delay
 	newcl->lastUserInfoCount = 0; //reset the count
 
+    newcl->delayCount = 0;
+    newcl->delaySum = 0;
+    newcl->pingSum = 0;
+    newcl->lastTimetimeNudgeCalculation = 0;
+    
+    newcl->delayCount2 = 0;
+    newcl->delaySum2 = 0;
+    newcl->pingSum2 = 0;
+    newcl->lastTimetimeNudgeCalculation2 = 0;
+
 	// if this was the first client on the server, or the last client
 	// the server can hold, send a heartbeat to the master.
 	count = 0;
@@ -1584,8 +1594,6 @@ static void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta ) {
         
         if (cl->state == CS_ACTIVE)
         {
-            static int lastTime = 0;
-
             cl->cmdIndex++;
             cl->cmdStats[cl->cmdIndex & CMD_MASK].serverTime = cmds[i].serverTime;
             cl->cmdStats[cl->cmdIndex & CMD_MASK].thinkTime = Sys_Milliseconds_;
@@ -1594,7 +1602,7 @@ static void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta ) {
             cl->delaySum += cmds[i].serverTime - sv.time;
             cl->pingSum += cl->ping;
 
-            if (Sys_Milliseconds_ > lastTime + 1000)
+            if (Sys_Milliseconds_ > cl->lastTimetimeNudgeCalculation + 1000)
             {
                 cl->timeNudge = ((cl->delaySum / (float)cl->delayCount) + (cl->pingSum / (float)cl->delayCount) -18 + (1000 / (float)sv_fps->integer)) * -1;
 
@@ -1602,11 +1610,11 @@ static void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta ) {
                 cl->delaySum = 0;
                 cl->pingSum = 0;
                 
-                lastTime = Sys_Milliseconds_;
+                cl->lastTimetimeNudgeCalculation = Sys_Milliseconds_;
             }
         }
         
-		SV_ClientThink (cl, &cmds[ i ]);
+		SV_ClientThink (cl, &cmds[i]);
 	}
 }
 

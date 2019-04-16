@@ -202,10 +202,18 @@ typedef struct client_s {
 	demoInfo_t		demo;
     ucmdStat_t	    cmdStats[CMD_MASK + 1];
     int	            cmdIndex;
+
     int             delayCount;
     int             delaySum;
     int             pingSum;
     int             timeNudge; // Approximation (+- 5)
+    int             lastTimetimeNudgeCalculation;
+
+    int             delayCount2;
+    int             delaySum2;
+    int             pingSum2;
+    int             timeNudge2; // Approximation (+- 5)
+    int             lastTimetimeNudgeCalculation2;
 } client_t;
 
 //=============================================================================
