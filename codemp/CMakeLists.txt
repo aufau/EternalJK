@@ -620,11 +620,7 @@ if(BuildMPEngine)
 			RUNTIME
 			DESTINATION ${JKAInstallDir}
 			COMPONENT ${JKAMPClientComponent})
-		if(MPEngineExtraInstallFiles)
-			install(FILES ${MPEngineExtraInstallFiles}
-				DESTINATION ${JKAInstallDir}
-				COMPONENT ${JKAMPClientComponent})
-		endif()
+		
 	endif(MakeApplicationBundles)
 
 	set_target_properties(${MPEngine} PROPERTIES COMPILE_DEFINITIONS "${MPEngineDefines}")
