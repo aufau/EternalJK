@@ -1297,6 +1297,8 @@ static void SV_NetStatus_f(client_t* client) {
     {
         memset(status, 0, sizeof(status));
 
+        client->lastTimeNetStatus = sv.time;
+
         int				i;
         client_t* cl;
         playerState_t* ps;
