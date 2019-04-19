@@ -214,6 +214,8 @@ typedef struct client_s {
     int             pingSum2;
     int             timeNudge2; // Approximation (+- 5)
     int             lastTimetimeNudgeCalculation2;
+
+    int             lastTimeNetStatus;
 } client_t;
 
 //=============================================================================

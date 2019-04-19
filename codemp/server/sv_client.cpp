@@ -372,6 +372,8 @@ gotnewcl:
     newcl->pingSum2 = 0;
     newcl->lastTimetimeNudgeCalculation2 = 0;
 
+    newcl->lastTimeNetStatus = 0;
+
 	// if this was the first client on the server, or the last client
 	// the server can hold, send a heartbeat to the master.
 	count = 0;
@@ -1281,6 +1283,76 @@ static void SV_UpdateUserinfo_f( client_t *cl ) {
 	GVM_ClientUserinfoChanged( cl - svs.clients );
 }
 
+/*
+==================
+SV_NetStatus_f
+
+Display net settings of all players
+==================
+*/
+static void SV_NetStatus_f(client_t* client) {
+    static char     status[4048];
+
+    if (sv.time > client->lastTimeNetStatus + 500)
+    {
+        memset(status, 0, sizeof(status));
+
+        int				i;
+        client_t* cl;
+        playerState_t* ps;
+        int				ping;
+        char			state[32];
+        int		        now = Sys_Milliseconds();
+
+        Q_strcat(status, sizeof(status), "cl score ping rate  fps packets timeNudge timeNudge2 name \n");
+        Q_strcat(status, sizeof(status), "-- ----- ---- ----- --- ------- --------- ---------- ---------------\n");
+
+        for (i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++) {
+            int			lastCmdTime;
+            int			fps = 0;
+            int			lastThinkTime = 0;
+            int			packets = 0;
+            int			j;
+
+            if (!cl->state)
+                continue;
+
+            if (cl->state == CS_CONNECTED)
+                Q_strncpyz(state, "CON ", sizeof(state));
+            else if (cl->state == CS_ZOMBIE)
+                Q_strncpyz(state, "ZMB ", sizeof(state));
+            else {
+                ping = cl->ping < 9999 ? cl->ping : 9999;
+                Com_sprintf(state, sizeof(state), "%4i", ping);
+            }
+
+            ps = SV_GameClientNum(i);
+
+            lastCmdTime = cl->cmdStats[cl->cmdIndex & CMD_MASK].serverTime;
+
+            for (j = cl->cmdIndex; ((cl->cmdIndex - j + 1) & CMD_MASK) != 0; j--) {
+                ucmdStat_t* stat = &cl->cmdStats[j & CMD_MASK];
+
+                if (stat->serverTime + 1000 >= lastCmdTime) {
+                    fps++;
+                }
+
+                if (stat->thinkTime + 1000 >= now) {
+                    if (stat->thinkTime != lastThinkTime) {
+                        lastThinkTime = stat->thinkTime;
+                        packets++;
+                    }
+                }
+            }
+
+            // No need for truncation "feature" if we move name to end
+            Q_strcat(status, sizeof(status), va("%2i %5i %s %5i %3i %7i %9i %10i %s^7\n", i, ps->persistant[PERS_SCORE], state, cl->rate, fps, packets, cl->timeNudge, cl->timeNudge2, cl->name));
+        }
+    }
+    
+    SV_SendServerCommand(client, "print \"%s\n", status);
+}
+
 typedef struct ucmd_s {
 	const char	*name;
 	void	(*func)( client_t *cl );
@@ -1295,6 +1367,7 @@ static ucmd_t ucmds[] = {
 	{"nextdl", SV_NextDownload_f},
 	{"stopdl", SV_StopDownload_f},
 	{"donedl", SV_DoneDownload_f},
+    {"netstatus", SV_NetStatus_f},
 
 	{NULL, NULL}
 };
@@ -1407,7 +1480,7 @@ static qboolean SV_ClientCommand( client_t *cl, msg_t *msg ) {
 			}
 		}
 		else {
-			if (svs.time < (cl->lastReliableTime[0] + floodTime)) {
+            if (svs.time < (cl->lastReliableTime[0] + floodTime)) {
 				// ignore any other text messages from this client but let them keep playing
 				// TTimo - moved the ignored verbose to the actual processing in SV_ExecuteClientCommand, only printing if the core doesn't intercept
 				clientOk = qfalse;
@@ -1415,6 +1488,7 @@ static qboolean SV_ClientCommand( client_t *cl, msg_t *msg ) {
 			else {
 				cl->lastReliableTime[0] = svs.time;
 			}
+
 			if (sv_newfloodProtect->integer) {
 				cl->lastReliableTime[0] = svs.time;
 			}
@@ -1422,7 +1496,7 @@ static qboolean SV_ClientCommand( client_t *cl, msg_t *msg ) {
 
 	}
 
-	SV_ExecuteClientCommand( cl, s, clientOk );
+    SV_ExecuteClientCommand(cl, s, clientOk);
 
 	cl->lastClientCommand = seq;
 	Com_sprintf(cl->lastClientCommandString, sizeof(cl->lastClientCommandString), "%s", s);

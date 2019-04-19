@@ -1205,73 +1205,6 @@ static void SV_Status_f( void )
 	Com_Printf ("\n");
 }
 
-/*
-================
-SV_Status2_f
-================
-*/
-static void SV_Status2_f(void)
-{
-    int				i;
-    client_t* cl;
-    playerState_t* ps;
-    int				ping;
-    char			state[32];
-    int		        now = Sys_Milliseconds();
-
-    // make sure server is running
-    if (!com_sv_running->integer) {
-        Com_Printf("Server is not running.\n");
-        return;
-    }
-
-    Com_Printf("cl score ping rate  fps packets timeNudge timeNudge2 name \n");
-    Com_Printf("-- ----- ---- ----- --- ------- --------- ---------- ---------------\n");
-
-    for (i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++) {
-        int			lastCmdTime;
-        int			fps = 0;
-        int			lastThinkTime = 0;
-        int			packets = 0;
-        int			j;
-
-        if (!cl->state)
-            continue;
-
-        if (cl->state == CS_CONNECTED)
-            Q_strncpyz(state, "CON ", sizeof(state));
-        else if (cl->state == CS_ZOMBIE)
-            Q_strncpyz(state, "ZMB ", sizeof(state));
-        else {
-            ping = cl->ping < 9999 ? cl->ping : 9999;
-            Com_sprintf(state, sizeof(state), "%4i", ping);
-        }
-
-        ps = SV_GameClientNum(i);
-
-        lastCmdTime = cl->cmdStats[cl->cmdIndex & CMD_MASK].serverTime;
-
-        for (j = cl->cmdIndex; ((cl->cmdIndex - j + 1) & CMD_MASK) != 0; j--) {
-            ucmdStat_t* stat = &cl->cmdStats[j & CMD_MASK];
-
-            if (stat->serverTime + 1000 >= lastCmdTime) {
-                fps++;
-            }
-
-            if (stat->thinkTime + 1000 >= now) {
-                if (stat->thinkTime != lastThinkTime) {
-                    lastThinkTime = stat->thinkTime;
-                    packets++;
-                }
-            }
-        }
-
-        // No need for truncation "feature" if we move name to end
-        Com_Printf("%2i %5i %s %5i %3i %7i %9i %10i %s^7\n", i, ps->persistant[PERS_SCORE], state, cl->rate, fps, packets, cl->timeNudge, cl->timeNudge2, cl->name);
-    }
-    Com_Printf("\n");
-}
-
 char	*SV_ExpandNewlines( char *in );
 #define SVSAY_PREFIX "Server^7\x19: "
 
@@ -2070,7 +2003,6 @@ void SV_AddOperatorCommands( void ) {
 	Cmd_AddCommand ("kicknum", SV_KickNum_f, "Kick a user from the server by userid" );
 	Cmd_AddCommand ("clientkick", SV_KickNum_f, "Kick a user from the server by userid" );
 	Cmd_AddCommand ("status", SV_Status_f, "Prints status of server and connected clients" );
-    Cmd_AddCommand ("statusss", SV_Status2_f, "Prints status of server and connected clients" );
 	Cmd_AddCommand ("serverinfo", SV_Serverinfo_f, "Prints the serverinfo that is visible in the server browsers" );
 	Cmd_AddCommand ("systeminfo", SV_Systeminfo_f, "Prints the systeminfo variables that are replicated to clients" );
 	Cmd_AddCommand ("dumpuser", SV_DumpUser_f, "Prints the userinfo for a given userid" );
