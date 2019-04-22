@@ -136,7 +136,7 @@ typedef struct {
 
 typedef struct ucmdStat_s {
     int		serverTime;
-    int		thinkTime;
+    int		packetIndex;
 } ucmdStat_t;
 
 #define CMD_MASK 1023

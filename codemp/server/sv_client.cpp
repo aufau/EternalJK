@@ -1304,7 +1304,6 @@ static void SV_NetStatus_f(client_t* client) {
         playerState_t* ps;
         int				ping;
         char			state[32];
-        int		        now = Sys_Milliseconds();
 
         Q_strcat(status, sizeof(status), "cl score ping rate  fps packets timeNudge timeNudge2 name \n");
         Q_strcat(status, sizeof(status), "-- ----- ---- ----- --- ------- --------- ---------- ---------------\n");
@@ -1312,7 +1311,7 @@ static void SV_NetStatus_f(client_t* client) {
         for (i = 0, cl = svs.clients; i < sv_maxclients->integer; i++, cl++) {
             int			lastCmdTime;
             int			fps = 0;
-            int			lastThinkTime = 0;
+            int			lastPacketIndex = 0;
             int			packets = 0;
             int			j;
 
@@ -1332,18 +1331,16 @@ static void SV_NetStatus_f(client_t* client) {
 
             lastCmdTime = cl->cmdStats[cl->cmdIndex & CMD_MASK].serverTime;
 
-            for (j = cl->cmdIndex; ((cl->cmdIndex - j + 1) & CMD_MASK) != 0; j--) {
-                ucmdStat_t* stat = &cl->cmdStats[j & CMD_MASK];
+            for (j = 0; j < CMD_MASK + 1; j++) {
+                ucmdStat_t* stat = &cl->cmdStats[j];
 
                 if (stat->serverTime + 1000 >= lastCmdTime) {
                     fps++;
-                }
 
-                if (stat->thinkTime + 1000 >= now) {
-                    if (stat->thinkTime != lastThinkTime) {
-                        lastThinkTime = stat->thinkTime;
-                        packets++;
-                    }
+		    if (lastPacketIndex != stat->packetIndex) {
+			lastPacketIndex = stat->packetIndex;
+			packets++;
+		    }
                 }
             }
 
@@ -1563,6 +1560,7 @@ each of the backup packets.
 static void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta ) {
 	int			i, key;
 	int			cmdCount;
+	int		packetIndex;
 	usercmd_t	nullcmd;
 	usercmd_t	cmds[MAX_PACKET_USERCMDS];
 	usercmd_t	*cmd, *oldcmd;
@@ -1648,6 +1646,8 @@ static void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta ) {
 		return;
 	}
 
+	packetIndex = cl->cmdIndex;
+
 	// usually, the first couple commands will be duplicates
 	// of ones we have previously received, but the servertimes
 	// in the commands will cause them to be immediately discarded
@@ -1672,7 +1672,7 @@ static void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta ) {
         {
             cl->cmdIndex++;
             cl->cmdStats[cl->cmdIndex & CMD_MASK].serverTime = cmds[i].serverTime;
-            cl->cmdStats[cl->cmdIndex & CMD_MASK].thinkTime = Sys_Milliseconds_;
+            cl->cmdStats[cl->cmdIndex & CMD_MASK].packetIndex = packetIndex;
 
             cl->delayCount++;
             cl->delaySum += cmds[i].serverTime - sv.time;
