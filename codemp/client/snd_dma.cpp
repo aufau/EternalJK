@@ -240,6 +240,7 @@ int			s_numChannels;			// Number of AL Sources == Num of Channels
 #define DEFAULT_VOICE_REF_DISTANCE	1500.0f		// Default voice reference distance
 
 int			s_UseOpenAL	= 0;	// Determines if using Open AL or the default software mixer
+cvar_t*		s_UseEAL;			// Load .eal files for EAX reverb
 
 ALfloat		listener_pos[3];		// Listener Position
 ALfloat		listener_ori[6];		// Listener Orientation
@@ -489,6 +490,7 @@ void S_Init( void ) {
 	Cmd_AddCommand("s_dynamic", S_SetDynamicMusic_f, "Change dynamic music state" );
 
 #ifdef USE_OPENAL
+	s_UseEAL = Cvar_Get("s_UseEAL", "1", CVAR_ARCHIVE|CVAR_LATCH);
 	cv = Cvar_Get("s_UseOpenAL" , "0",CVAR_ARCHIVE|CVAR_LATCH);
 	s_UseOpenAL = !!(cv->integer);
 
@@ -5469,6 +5471,9 @@ bool LoadEALFile(char *szEALFilename)
 		return false;
 
 	if (strstr(szEALFilename, "nomap"))
+		return false;
+
+	if (!s_UseEAL->integer)
 		return false;
 
 	s_EnvironmentID = 0xFFFFFFFF;
