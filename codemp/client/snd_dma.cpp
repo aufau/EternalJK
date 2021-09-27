@@ -609,10 +609,9 @@ void S_Init( void ) {
 
 		// s_init could be called in game, if so there may be an .eal file
 		// for this level
-
-		const char *mapname = Cvar_VariableString( "mapname" );
+		const char *info = cl.gameState.stringData + cl.gameState.stringOffsets[CS_SERVERINFO];
+		const char *mapname = Info_ValueForKey(info, "mapname");
 		EALFileInit(mapname);
-
 	}
 	else
 	{
@@ -920,8 +919,10 @@ void S_BeginRegistration( void )
 	// Find name of level so we can load in the appropriate EAL file
 	if (s_UseOpenAL)
 	{
-		const char *mapname = Cvar_VariableString( "mapname" );
+		const char* info = cl.gameState.stringData + cl.gameState.stringOffsets[CS_SERVERINFO];
+		const char* mapname = Info_ValueForKey(info, "mapname");
 		EALFileInit(mapname);
+
 		// clear carry crap from previous map
 		for (int i = 0; i < EAX_MAX_FXSLOTS; i++)
 		{
