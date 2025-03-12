@@ -28,10 +28,10 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 // Define g2_float - floating point type used for various intermediate
 // calculations when collision tracing ghoul2 models.
-typedef float g2_float;
+typedef double g2_float;
 
 static inline g2_float G2_sqrt(g2_float x) {
-	return sqrtf(x);
+	return sqrt(x);
 }
 
 // G2 Math functions
