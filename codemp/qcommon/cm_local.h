@@ -33,19 +33,19 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 // Define cm_float - floating point type used for various intermediate
 // calculations in collision map subsystem.
-typedef float cm_float;
-typedef float cm_vec3_t[3];
+typedef double cm_float;
+typedef double cm_vec3_t[3];
 
 static inline cm_float CM_sqrt(cm_float x) {
-	return sqrtf(x);
+	return sqrt(x);
 }
 
 static inline cm_float CM_sin(cm_float x) {
-	return sinf(x);
+	return sin(x);
 }
 
 static inline cm_float CM_cos(cm_float x) {
-	return cosf(x);
+	return cos(x);
 }
 
 // CM Math functions
