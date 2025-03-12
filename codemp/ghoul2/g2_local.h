@@ -26,6 +26,64 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "ghoul2/ghoul2_shared.h"
 
+// Define g2_float - floating point type used for various intermediate
+// calculations when collision tracing ghoul2 models.
+typedef float g2_float;
+
+static inline g2_float G2_sqrt(g2_float x) {
+	return sqrtf(x);
+}
+
+// G2 Math functions
+static inline void G2_CrossProduct( const vec3_t vec1, const vec3_t vec2, vec3_t vecOut ) {
+	vecOut[0] = (g2_float)vec1[1]*vec2[2] - (g2_float)vec1[2]*vec2[1];
+	vecOut[1] = (g2_float)vec1[2]*vec2[0] - (g2_float)vec1[0]*vec2[2];
+	vecOut[2] = (g2_float)vec1[0]*vec2[1] - (g2_float)vec1[1]*vec2[0];
+}
+
+static inline g2_float G2_DotProduct( const vec3_t vec1, const vec3_t vec2 ) {
+	return (g2_float)vec1[0]*vec2[0] + (g2_float)vec1[1]*vec2[1] + (g2_float)vec1[2]*vec2[2];
+}
+
+static inline g2_float G2_VectorLength( const vec3_t vec )
+{
+	return G2_sqrt( (g2_float)vec[0]*vec[0] + (g2_float)vec[1]*vec[1] + (g2_float)vec[2]*vec[2] );
+}
+
+
+static inline g2_float G2_VectorLengthSquared( const vec3_t vec ) {
+	return (g2_float)vec[0]*vec[0] + (g2_float)vec[1]*vec[1] + (g2_float)vec[2]*vec[2];
+}
+
+static inline void G2_VectorMA( const vec3_t vec1, g2_float scale, const vec3_t vec2, vec3_t vecOut ) {
+	vecOut[0] = vec1[0] + scale*vec2[0];
+	vecOut[1] = vec1[1] + scale*vec2[1];
+	vecOut[2] = vec1[2] + scale*vec2[2];
+}
+
+static inline void G2_VectorScale( const vec3_t vecIn, g2_float scale, vec3_t vecOut ) {
+	vecOut[0] = vecIn[0]*scale;
+	vecOut[1] = vecIn[1]*scale;
+	vecOut[2] = vecIn[2]*scale;
+}
+
+static inline g2_float G2_VectorNormalize( vec3_t vec ) {
+	g2_float	length, ilength;
+
+	length = G2_VectorLengthSquared(vec);
+	length = G2_sqrt( length );
+
+	if ( length ) {
+		ilength = 1/length;
+		vec[0] *= ilength;
+		vec[1] *= ilength;
+		vec[2] *= ilength;
+	}
+
+	return length;
+}
+
+
 //rww - RAGDOLL_BEGIN
 class CRagDollUpdateParams;
 //rww - RAGDOLL_END
@@ -232,6 +290,7 @@ void		G2_TraceModels(CGhoul2Info_v &ghoul2, vec3_t rayStart, vec3_t rayEnd, Coll
 void		G2_TraceModels(CGhoul2Info_v &ghoul2, vec3_t rayStart, vec3_t rayEnd, CollisionRecord_t *collRecMap, int entNum, int traceFlags, int useLod, float fRadius);
 #endif
 void		TransformAndTranslatePoint (const vec3_t in, vec3_t out, mdxaBone_t *mat);
+void		G2_TransformAndTranslatePoint (const vec3_t in, vec3_t out, mdxaBone_t *mat);
 #ifdef _G2_GORE
 void		G2_TransformModel(CGhoul2Info_v &ghoul2, const int frameNum, vec3_t scale, IHeapAllocator *G2VertSpace, int useLod, bool ApplyGore);
 #else
@@ -239,7 +298,9 @@ void		G2_TransformModel(CGhoul2Info_v &ghoul2, const int frameNum, vec3_t scale,
 #endif
 void		G2_GenerateWorldMatrix(const vec3_t angles, const vec3_t origin);
 void		TransformPoint (const vec3_t in, vec3_t out, mdxaBone_t *mat);
+void		G2_TransformPoint (const vec3_t in, vec3_t out, mdxaBone_t *mat);
 void		Inverse_Matrix(mdxaBone_t *src, mdxaBone_t *dest);
+void		G2_Inverse_Matrix(mdxaBone_t *src, mdxaBone_t *dest);
 void		*G2_FindSurface(void *mod, int index, int lod);
 qboolean	G2_SaveGhoul2Models(CGhoul2Info_v &ghoul2, char **buffer, int *size);
 void		G2_LoadGhoul2Model(CGhoul2Info_v &ghoul2, char *buffer);

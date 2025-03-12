@@ -645,15 +645,15 @@ void G2_TransformModel(CGhoul2Info_v &ghoul2, const int frameNum, vec3_t scale, 
 
 
 // work out how much space a triangle takes
-static float	G2_AreaOfTri(const vec3_t A, const vec3_t B, const vec3_t C)
+static g2_float	G2_AreaOfTri(const vec3_t A, const vec3_t B, const vec3_t C)
 {
 	vec3_t	cross, ab, cb;
 	VectorSubtract(A, B, ab);
 	VectorSubtract(C, B, cb);
 
-	CrossProduct(ab, cb, cross);
+	G2_CrossProduct(ab, cb, cross);
 
-	return VectorLength(cross);
+	return G2_VectorLength(cross);
 }
 
 // actually determine the S and T of the coordinate we hit in a given poly
@@ -662,13 +662,13 @@ static void G2_BuildHitPointST( const vec3_t A, const float SA, const float TA,
 						 const vec3_t C, const float SC, const float TC,
 						 const vec3_t P, float *s, float *t,float &bary_i,float &bary_j)
 {
-	float	areaABC = G2_AreaOfTri(A, B, C);
+	g2_float	areaABC = G2_AreaOfTri(A, B, C);
 
-	float i = G2_AreaOfTri(P, B, C) / areaABC;
+	g2_float i = G2_AreaOfTri(P, B, C) / areaABC;
 	bary_i=i;
-	float j = G2_AreaOfTri(A, P, C) / areaABC;
+	g2_float j = G2_AreaOfTri(A, P, C) / areaABC;
 	bary_j=j;
-	float k = G2_AreaOfTri(A, B, P) / areaABC;
+	g2_float k = G2_AreaOfTri(A, B, P) / areaABC;
 
 	*s = SA * i + SB * j + SC * k;
 	*t = TA * i + TB * j + TC * k;
@@ -700,12 +700,12 @@ qboolean G2_SegmentTriangleTest( const vec3_t start, const vec3_t end,
 	VectorSubtract(C, A, edgeAC);
 	VectorSubtract(B, A, returnedNormalT);
 
-	CrossProduct(returnedNormalT, edgeAC, returnedNormal);
+	G2_CrossProduct(returnedNormalT, edgeAC, returnedNormal);
 
 	vec3_t ray;
 	VectorSubtract(end, start, ray);
 
-	*denom=DotProduct(ray, returnedNormal);
+	*denom=G2_DotProduct(ray, returnedNormal);
 
 	if (fabs(*denom)<tiny||        // triangle parallel to ray
 		(!backFaces && *denom>0)||		// not accepting back faces
@@ -717,14 +717,14 @@ qboolean G2_SegmentTriangleTest( const vec3_t start, const vec3_t end,
 	vec3_t toPlane;
 	VectorSubtract(A, start, toPlane);
 
-	float t=DotProduct(toPlane, returnedNormal)/ *denom;
+	g2_float t=G2_DotProduct(toPlane, returnedNormal)/ *denom;
 
 	if (t<0.0f||t>1.0f)
 	{
 		return qfalse; // off segment
 	}
 
-	VectorScale(ray, t, ray);
+	G2_VectorScale(ray, t, ray);
 
 	VectorAdd(ray, start, returnedPoint);
 
@@ -739,20 +739,20 @@ qboolean G2_SegmentTriangleTest( const vec3_t start, const vec3_t end,
 
 	vec3_t temp;
 
-	CrossProduct(edgePA, edgePB, temp);
-	if (DotProduct(temp, returnedNormal)<0.0f)
+	G2_CrossProduct(edgePA, edgePB, temp);
+	if (G2_DotProduct(temp, returnedNormal)<0.0f)
 	{
 		return qfalse; // off triangle
 	}
 
-	CrossProduct(edgePC, edgePA, temp);
-	if (DotProduct(temp,returnedNormal)<0.0f)
+	G2_CrossProduct(edgePC, edgePA, temp);
+	if (G2_DotProduct(temp,returnedNormal)<0.0f)
 	{
 		return qfalse; // off triangle
 	}
 
-	CrossProduct(edgePB, edgePC, temp);
-	if (DotProduct(temp, returnedNormal)<0.0f)
+	G2_CrossProduct(edgePB, edgePC, temp);
+	if (G2_DotProduct(temp, returnedNormal)<0.0f)
 	{
 		return qfalse; // off triangle
 	}
@@ -796,32 +796,32 @@ void G2_GorePolys( const mdxmSurface_t *surface, CTraceSurface &TS, const mdxmSu
 	basis2[1]=0.0f;
 	basis2[2]=1.0f;
 
-	CrossProduct(TS.rayEnd,basis2,basis1);
+	G2_CrossProduct(TS.rayEnd,basis2,basis1);
 
-	if (DotProduct(basis1,basis1)<.1f)
+	if (G2_DotProduct(basis1,basis1)<.1f)
 	{
 		basis2[0]=0.0f;
 		basis2[1]=1.0f;
 		basis2[2]=0.0f;
-		CrossProduct(TS.rayEnd,basis2,basis1);
+		G2_CrossProduct(TS.rayEnd,basis2,basis1);
 	}
 
-	CrossProduct(TS.rayEnd,basis1,basis2);
+	G2_CrossProduct(TS.rayEnd,basis1,basis2);
 	// Give me a shot direction not a bunch of zeros :) -Gil
 	assert(DotProduct(basis1,basis1)>.0001f);
 	assert(DotProduct(basis2,basis2)>.0001f);
 
-	VectorNormalize(basis1);
-	VectorNormalize(basis2);
+	G2_VectorNormalize(basis1);
+	G2_VectorNormalize(basis2);
 
-	float c=cos(TS.theta);
-	float s=sin(TS.theta);
+	g2_float c=cos(TS.theta);
+	g2_float s=sin(TS.theta);
 
-	VectorScale(basis1,.5f*c/TS.tsize,taxis);
-	VectorMA(taxis,.5f*s/TS.tsize,basis2,taxis);
+	G2_VectorScale(basis1,.5f*c/TS.tsize,taxis);
+	G2_VectorMA(taxis,.5f*s/TS.tsize,basis2,taxis);
 
-	VectorScale(basis1,-.5f*s/TS.ssize,saxis);
-	VectorMA(saxis,.5f*c/TS.ssize,basis2,saxis);
+	G2_VectorScale(basis1,-.5f*s/TS.ssize,saxis);
+	G2_VectorMA(saxis,.5f*c/TS.ssize,basis2,saxis);
 
 	float *verts = (float *)TS.TransformedVertsArray[surface->thisSurfaceIndex];
 	int numVerts = surface->numVerts;
@@ -834,8 +834,8 @@ void G2_GorePolys( const mdxmSurface_t *surface, CTraceSurface &TS, const mdxmSu
 		delta[0]=verts[pos+0]-TS.rayStart[0];
 		delta[1]=verts[pos+1]-TS.rayStart[1];
 		delta[2]=verts[pos+2]-TS.rayStart[2];
-		float s=DotProduct(delta,saxis)+0.5f;
-		float t=DotProduct(delta,taxis)+0.5f;
+		float s=G2_DotProduct(delta,saxis)+0.5f;
+		float t=G2_DotProduct(delta,taxis)+0.5f;
 		int vflags=0;
 		if (s>GORE_MARGIN)
 		{
@@ -895,8 +895,8 @@ void G2_GorePolys( const mdxmSurface_t *surface, CTraceSurface &TS, const mdxmSu
 
 			VectorSubtract(&verts[tris[j].indexes[1]*5],&verts[tris[j].indexes[0]*5],e1);
 			VectorSubtract(&verts[tris[j].indexes[2]*5],&verts[tris[j].indexes[0]*5],e2);
-			CrossProduct(e1,e2,n);
-			if (DotProduct(TS.rayEnd,n)>0.0f)
+			G2_CrossProduct(e1,e2,n);
+			if (G2_DotProduct(TS.rayEnd,n)>0.0f)
 			{
 				if (!TS.gore->frontFaces)
 				{
@@ -1036,12 +1036,12 @@ void G2_GorePolys( const mdxmSurface_t *surface, CTraceSurface &TS, const mdxmSu
 		fdata[7]=-0.5f;
 		fdata[11]=0.0f;
 		vec3_t shotOriginInCurrentSpace; // unknown space
-		TransformPoint(TS.rayStart,shotOriginInCurrentSpace,(mdxaBone_t *)fdata); // dest middle arg
+		G2_TransformPoint(TS.rayStart,shotOriginInCurrentSpace,(mdxaBone_t *)fdata); // dest middle arg
 		// this will insure the shot origin in our unknown space is now the shot origin, making it a known space
 		fdata[3]-=shotOriginInCurrentSpace[0];
 		fdata[7]-=shotOriginInCurrentSpace[1];
 		fdata[11]-=shotOriginInCurrentSpace[2];
-		Inverse_Matrix((mdxaBone_t *)fdata,(mdxaBone_t *)(fdata+12));  // dest 2nd arg
+		G2_Inverse_Matrix((mdxaBone_t *)fdata,(mdxaBone_t *)(fdata+12));  // dest 2nd arg
 		data+=24;
 
 //		assert((data - (int *)gore->tex[TS.lod]) * sizeof(int) == size);
@@ -1107,14 +1107,14 @@ static bool G2_TracePolys(const mdxmSurface_t *surface, const mdxmSurfHierarchy_
 					}
 
 					VectorSubtract(hitPoint, TS.rayStart, distVect);
-					newCol.mDistance = VectorLength(distVect);
+					newCol.mDistance = G2_VectorLength(distVect);
 
 					// put the hit point back into world space
-					TransformAndTranslatePoint(hitPoint, newCol.mCollisionPosition, &worldMatrix);
+					G2_TransformAndTranslatePoint(hitPoint, newCol.mCollisionPosition, &worldMatrix);
 
 					// transform normal (but don't translate) into world angles
-					TransformPoint(normal, newCol.mCollisionNormal, &worldMatrix);
-					VectorNormalize(newCol.mCollisionNormal);
+					G2_TransformPoint(normal, newCol.mCollisionNormal, &worldMatrix);
+					G2_VectorNormalize(newCol.mCollisionNormal);
 
 					newCol.mMaterial = newCol.mLocation = 0;
 
@@ -1213,39 +1213,39 @@ static bool G2_RadiusTracePolys(
 	vec3_t v3RayDir;
 	VectorSubtract(TS.rayEnd, TS.rayStart, v3RayDir);
 
-	CrossProduct(v3RayDir,basis2,basis1);
+	G2_CrossProduct(v3RayDir,basis2,basis1);
 
-	if (DotProduct(basis1,basis1)<.1f)
+	if (G2_DotProduct(basis1,basis1)<.1f)
 	{
 		basis2[0]=0.0f;
 		basis2[1]=1.0f;
 		basis2[2]=0.0f;
-		CrossProduct(v3RayDir,basis2,basis1);
+		G2_CrossProduct(v3RayDir,basis2,basis1);
 	}
 
-	CrossProduct(v3RayDir,basis1,basis2);
+	G2_CrossProduct(v3RayDir,basis1,basis2);
 	// Give me a shot direction not a bunch of zeros :) -Gil
 //	assert(DotProduct(basis1,basis1)>.0001f);
 //	assert(DotProduct(basis2,basis2)>.0001f);
 
-	VectorNormalize(basis1);
-	VectorNormalize(basis2);
+	G2_VectorNormalize(basis1);
+	G2_VectorNormalize(basis2);
 
-	const float c=cos(0.0f);//theta
-	const float s=sin(0.0f);//theta
+	const g2_float c=cos(0.0f);//theta
+	const g2_float s=sin(0.0f);//theta
 
-	VectorScale(basis1, 0.5f * c / TS.m_fRadius,taxis);
-	VectorMA(taxis,     0.5f * s / TS.m_fRadius,basis2,taxis);
+	G2_VectorScale(basis1, 0.5f * c / TS.m_fRadius,taxis);
+	G2_VectorMA(taxis,     0.5f * s / TS.m_fRadius,basis2,taxis);
 
-	VectorScale(basis1,-0.5f * s /TS.m_fRadius,saxis);
-	VectorMA(    saxis, 0.5f * c /TS.m_fRadius,basis2,saxis);
+	G2_VectorScale(basis1,-0.5f * s /TS.m_fRadius,saxis);
+	G2_VectorMA(    saxis, 0.5f * c /TS.m_fRadius,basis2,saxis);
 
 	const float * const verts = (float *)TS.TransformedVertsArray[surface->thisSurfaceIndex];
 	const int numVerts = surface->numVerts;
 
 	int flags=63;
 	//rayDir/=lengthSquared(raydir);
-	const float f = VectorLengthSquared(v3RayDir);
+	const g2_float f = G2_VectorLengthSquared(v3RayDir);
 	v3RayDir[0]/=f;
 	v3RayDir[1]/=f;
 	v3RayDir[2]/=f;
@@ -1257,9 +1257,9 @@ static bool G2_RadiusTracePolys(
 		delta[0]=verts[pos+0]-TS.rayStart[0];
 		delta[1]=verts[pos+1]-TS.rayStart[1];
 		delta[2]=verts[pos+2]-TS.rayStart[2];
-		const float s=DotProduct(delta,saxis)+0.5f;
-		const float t=DotProduct(delta,taxis)+0.5f;
-		const float u=DotProduct(delta,v3RayDir);
+		const g2_float s=G2_DotProduct(delta,saxis)+0.5f;
+		const g2_float t=G2_DotProduct(delta,taxis)+0.5f;
+		const g2_float u=G2_DotProduct(delta,v3RayDir);
 		int vflags=0;
 
 		if (s>0)
@@ -1345,11 +1345,11 @@ static bool G2_RadiusTracePolys(
 
 					VectorSubtract(C, A, edgeAC);
 					VectorSubtract(B, A, edgeBA);
-					CrossProduct(edgeBA, edgeAC, normal);
+					G2_CrossProduct(edgeBA, edgeAC, normal);
 
 					// transform normal (but don't translate) into world angles
-					TransformPoint(normal, newCol.mCollisionNormal, &worldMatrix);
-					VectorNormalize(newCol.mCollisionNormal);
+					G2_TransformPoint(normal, newCol.mCollisionNormal, &worldMatrix);
+					G2_VectorNormalize(newCol.mCollisionNormal);
 
 					newCol.mMaterial = newCol.mLocation = 0;
 					// exit now if we should
@@ -1367,22 +1367,22 @@ static bool G2_RadiusTracePolys(
 #else
 					//yeah, I want the collision point. Let's work out the impact point on the triangle. -rww
 					vec3_t hitPoint;
-					float side, side2;
-					float dist;
-					float third = -(A[0]*(B[1]*C[2] - C[1]*B[2]) + B[0]*(C[1]*A[2] - A[1]*C[2]) + C[0]*(A[1]*B[2] - B[1]*A[2]) );
+					g2_float side, side2;
+					g2_float dist;
+					g2_float third = -(A[0]*((g2_float)B[1]*C[2] - (g2_float)C[1]*B[2]) + (g2_float)B[0]*((g2_float)C[1]*A[2] - (g2_float)A[1]*C[2]) + (g2_float)C[0]*(A[1]*B[2] - (g2_float)B[1]*A[2]) );
 
 					VectorSubtract(TS.rayEnd, TS.rayStart, distVect);
-					side = normal[0]*TS.rayStart[0] + normal[1]*TS.rayStart[1] + normal[2]*TS.rayStart[2] + third;
-                    side2 = normal[0]*distVect[0] + normal[1]*distVect[1] + normal[2]*distVect[2];
+					side = (g2_float)normal[0]*TS.rayStart[0] + (g2_float)normal[1]*TS.rayStart[1] + (g2_float)normal[2]*TS.rayStart[2] + third;
+                    side2 = (g2_float)normal[0]*distVect[0] + (g2_float)normal[1]*distVect[1] + (g2_float)normal[2]*distVect[2];
 					dist = side/side2;
-					VectorMA(TS.rayStart, -dist, distVect, hitPoint);
+					G2_VectorMA(TS.rayStart, -dist, distVect, hitPoint);
 #endif
 
 					VectorSubtract(hitPoint, TS.rayStart, distVect);
-					newCol.mDistance = VectorLength(distVect);
+					newCol.mDistance = G2_VectorLength(distVect);
 
 					// put the hit point back into world space
-					TransformAndTranslatePoint(hitPoint, newCol.mCollisionPosition, &worldMatrix);
+					G2_TransformAndTranslatePoint(hitPoint, newCol.mCollisionPosition, &worldMatrix);
 					newCol.mBarycentricI = newCol.mBarycentricJ = 0.0f;
 					break;
 				}
@@ -1596,6 +1596,14 @@ void TransformPoint (const vec3_t in, vec3_t out, mdxaBone_t *mat) {
 	}
 }
 
+void G2_TransformPoint (const vec3_t in, vec3_t out, mdxaBone_t *mat) {
+	for (int i=0;i<3;i++)
+	{
+		out[i]= (g2_float)in[0]*mat->matrix[i][0] + (g2_float)in[1]*mat->matrix[i][1] + (g2_float)in[2]*mat->matrix[i][2];
+	}
+}
+
+
 void TransformAndTranslatePoint (const vec3_t in, vec3_t out, mdxaBone_t *mat) {
 
 	for (int i=0;i<3;i++)
@@ -1604,6 +1612,13 @@ void TransformAndTranslatePoint (const vec3_t in, vec3_t out, mdxaBone_t *mat) {
 	}
 }
 
+void G2_TransformAndTranslatePoint (const vec3_t in, vec3_t out, mdxaBone_t *mat) {
+
+	for (int i=0;i<3;i++)
+	{
+		out[i]= (g2_float)in[0]*mat->matrix[i][0] + (g2_float)in[1]*mat->matrix[i][1] + (g2_float)in[2]*mat->matrix[i][2] + mat->matrix[i][3];
+	}
+}
 
 // create a matrix using a set of angles
 void Create_Matrix(const float *angle, mdxaBone_t *matrix)
@@ -1649,6 +1664,28 @@ void Inverse_Matrix(mdxaBone_t *src, mdxaBone_t *dest)
         for (j = 0; j < 3; j++)
 		{
             dest->matrix[i][3]-=dest->matrix[i][j]*src->matrix[j][3];
+		}
+	}
+}
+
+// given a matrix, generate the inverse of that matrix
+void G2_Inverse_Matrix(mdxaBone_t *src, mdxaBone_t *dest)
+{
+	int i, j;
+
+    for (i = 0; i < 3; i++)
+	{
+        for (j = 0; j < 3; j++)
+		{
+            dest->matrix[i][j]=src->matrix[j][i];
+		}
+	}
+    for (i = 0; i < 3; i++)
+	{
+        dest->matrix[i][3]=0;
+        for (j = 0; j < 3; j++)
+		{
+            dest->matrix[i][3]-=(g2_float)dest->matrix[i][j]*src->matrix[j][3];
 		}
 	}
 }

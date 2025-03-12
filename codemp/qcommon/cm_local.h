@@ -69,13 +69,11 @@ static inline void CM_VectorScale( const vec3_t vecIn, cm_float scale, vec3_t ve
 	vecOut[2] = vecIn[2]*scale;
 }
 
+static inline cm_float CM_VectorNormalize( vec3_t vec ) {
+	cm_float	length, ilength;
 
-static inline cm_float CM_VectorNormalize( vec3_t vec )
-{
-	float	length, ilength;
-
-	length = vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2];
-	length = sqrtf( length );
+	length = CM_VectorLengthSquared(vec);
+	length = CM_sqrt( length );
 
 	if ( length ) {
 		ilength = 1/length;
