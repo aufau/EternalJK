@@ -1343,12 +1343,12 @@ CM_CheckFacetPlane
 ====================
 */
 static inline int CM_CheckFacetPlane(float *plane, vec3_t start, vec3_t end, float *enterFrac, float *leaveFrac, int *hit) {
-	float d1, d2, f;
+	cm_float d1, d2, f;
 
 	*hit = qfalse;
 
-	d1 = DotProduct( start, plane ) - plane[3];
-	d2 = DotProduct( end, plane ) - plane[3];
+	d1 = CM_DotProduct( start, plane ) - plane[3];
+	d2 = CM_DotProduct( end, plane ) - plane[3];
 
 	// if completely in front of face, no intersection with the entire facet
 	if (d1 > 0 && ( d2 >= SURFACE_CLIP_EPSILON || d2 >= d1 )  ) {
@@ -1391,7 +1391,8 @@ CM_TraceThroughPatchCollide
 void CM_TraceThroughPatchCollide( traceWork_t *tw, trace_t &trace, const struct patchCollide_s *pc )
 {
 	int i, j, hit, hitnum;
-	float offset, enterFrac, leaveFrac, t;
+	cm_float offset, t;
+	float enterFrac, leaveFrac;
 	patchPlane_t *planes;
 	facet_t	*facet;
 	float plane[4] = { 0.0f }, bestplane[4] = { 0.0f };
@@ -1431,7 +1432,7 @@ void CM_TraceThroughPatchCollide( traceWork_t *tw, trace_t &trace, const struct 
 			plane[3] += tw->sphere.radius;
 
 			// find the closest point on the capsule to the plane
-			t = DotProduct( plane, tw->sphere.offset );
+			t = CM_DotProduct( plane, tw->sphere.offset );
 			if ( t > 0.0f )
 			{
 				VectorSubtract( tw->start, tw->sphere.offset, startp );
@@ -1444,7 +1445,7 @@ void CM_TraceThroughPatchCollide( traceWork_t *tw, trace_t &trace, const struct 
 			}
 		}
 		else {
-			offset = DotProduct( tw->offsets[ planes->signbits ], plane);
+			offset = CM_DotProduct( tw->offsets[ planes->signbits ], plane);
 			plane[3] -= offset;
 			VectorCopy( tw->start, startp );
 			VectorCopy( tw->end, endp );
@@ -1471,7 +1472,7 @@ void CM_TraceThroughPatchCollide( traceWork_t *tw, trace_t &trace, const struct 
 				plane[3] += tw->sphere.radius;
 
 				// find the closest point on the capsule to the plane
-				t = DotProduct( plane, tw->sphere.offset );
+				t = CM_DotProduct( plane, tw->sphere.offset );
 				if ( t > 0.0f )
 				{
 					VectorSubtract( tw->start, tw->sphere.offset, startp );
@@ -1485,7 +1486,7 @@ void CM_TraceThroughPatchCollide( traceWork_t *tw, trace_t &trace, const struct 
 			}
 			else {
 				// NOTE: this works even though the plane might be flipped because the bbox is centered
-				offset = DotProduct( tw->offsets[ planes->signbits ], plane);
+				offset = CM_DotProduct( tw->offsets[ planes->signbits ], plane);
 				plane[3] += fabs(offset);
 				VectorCopy( tw->start, startp );
 				VectorCopy( tw->end, endp );
@@ -1543,7 +1544,7 @@ Modifies tr->tr if any of the facets effect the trace
 */
 qboolean CM_PositionTestInPatchCollide( traceWork_t *tw, const struct patchCollide_s *pc ) {
 	int i, j;
-	float offset, t;
+	cm_float offset, t;
 	patchPlane_t *planes;
 	facet_t	*facet;
 	float plane[4];
@@ -1563,7 +1564,7 @@ qboolean CM_PositionTestInPatchCollide( traceWork_t *tw, const struct patchColli
 			plane[3] += tw->sphere.radius;
 
 			// find the closest point on the capsule to the plane
-			t = DotProduct( plane, tw->sphere.offset );
+			t = CM_DotProduct( plane, tw->sphere.offset );
 			if ( t > 0 ) {
 				VectorSubtract( tw->start, tw->sphere.offset, startp );
 			}
@@ -1572,12 +1573,12 @@ qboolean CM_PositionTestInPatchCollide( traceWork_t *tw, const struct patchColli
 			}
 		}
 		else {
-			offset = DotProduct( tw->offsets[ planes->signbits ], plane);
+			offset = CM_DotProduct( tw->offsets[ planes->signbits ], plane);
 			plane[3] -= offset;
 			VectorCopy( tw->start, startp );
 		}
 
-		if ( DotProduct( plane, startp ) - plane[3] > 0.0f ) {
+		if ( CM_DotProduct( plane, startp ) - plane[3] > 0.0f ) {
 			continue;
 		}
 
@@ -1596,7 +1597,7 @@ qboolean CM_PositionTestInPatchCollide( traceWork_t *tw, const struct patchColli
 				plane[3] += tw->sphere.radius;
 
 				// find the closest point on the capsule to the plane
-				t = DotProduct( plane, tw->sphere.offset );
+				t = CM_DotProduct( plane, tw->sphere.offset );
 				if ( t > 0.0f ) {
 					VectorSubtract( tw->start, tw->sphere.offset, startp );
 				}
@@ -1606,12 +1607,12 @@ qboolean CM_PositionTestInPatchCollide( traceWork_t *tw, const struct patchColli
 			}
 			else {
 				// NOTE: this works even though the plane might be flipped because the bbox is centered
-				offset = DotProduct( tw->offsets[ planes->signbits ], plane);
+				offset = CM_DotProduct( tw->offsets[ planes->signbits ], plane);
 				plane[3] += fabs(offset);
 				VectorCopy( tw->start, startp );
 			}
 
-			if ( DotProduct( plane, startp ) - plane[3] > 0.0f ) {
+			if ( CM_DotProduct( plane, startp ) - plane[3] > 0.0f ) {
 				break;
 			}
 		}
@@ -1803,6 +1804,3 @@ void CM_DrawDebugSurface( void (*drawPoly)(int color, int numPoints, float *poin
 	drawPoly( 4, v[0] );
 #endif
 }
-
-
-

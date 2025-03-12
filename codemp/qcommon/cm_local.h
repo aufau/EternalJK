@@ -31,6 +31,98 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define	BOX_MODEL_HANDLE		(MAX_SUBMODELS-1)
 #define CAPSULE_MODEL_HANDLE	(MAX_SUBMODELS-2)
 
+// Define cm_float - floating point type used for various intermediate
+// calculations in collision map subsystem.
+typedef float cm_float;
+typedef float cm_vec3_t[3];
+
+static inline cm_float CM_sqrt(cm_float x) {
+	return sqrtf(x);
+}
+
+static inline cm_float CM_sin(cm_float x) {
+	return sinf(x);
+}
+
+static inline cm_float CM_cos(cm_float x) {
+	return cosf(x);
+}
+
+// CM Math functions
+static inline cm_float CM_DotProduct( const vec3_t vec1, const vec3_t vec2 ) {
+	return (cm_float)vec1[0]*vec2[0] + (cm_float)vec1[1]*vec2[1] + (cm_float)vec1[2]*vec2[2];
+}
+
+static inline cm_float CM_VectorLengthSquared( const vec3_t vec ) {
+	return (cm_float)vec[0]*vec[0] + (cm_float)vec[1]*vec[1] + (cm_float)vec[2]*vec[2];
+}
+
+static inline void CM_VectorMA( const vec3_t vec1, cm_float scale, const vec3_t vec2, vec3_t vecOut ) {
+	vecOut[0] = vec1[0] + scale*vec2[0];
+	vecOut[1] = vec1[1] + scale*vec2[1];
+	vecOut[2] = vec1[2] + scale*vec2[2];
+}
+
+static inline void CM_VectorScale( const vec3_t vecIn, cm_float scale, vec3_t vecOut ) {
+	vecOut[0] = vecIn[0]*scale;
+	vecOut[1] = vecIn[1]*scale;
+	vecOut[2] = vecIn[2]*scale;
+}
+
+
+static inline cm_float CM_VectorNormalize( vec3_t vec )
+{
+	float	length, ilength;
+
+	length = vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2];
+	length = sqrtf( length );
+
+	if ( length ) {
+		ilength = 1/length;
+		vec[0] *= ilength;
+		vec[1] *= ilength;
+		vec[2] *= ilength;
+	}
+
+	return length;
+}
+
+static inline void CM_AngleVectors( const vec3_t angles, vec3_t forward, vec3_t right, vec3_t up) {
+	cm_float		angle;
+	static cm_float	sr, sp, sy, cr, cp, cy;
+	// static to help MS compiler fp bugs
+
+	angle = angles[YAW] * (M_PI*2 / 360);
+	sy = CM_sin(angle);
+	cy = CM_cos(angle);
+	angle = angles[PITCH] * (M_PI*2 / 360);
+	sp = CM_sin(angle);
+	cp = CM_cos(angle);
+	angle = angles[ROLL] * (M_PI*2 / 360);
+	sr = CM_sin(angle);
+	cr = CM_cos(angle);
+
+	if (forward)
+	{
+		forward[0] = cp*cy;
+		forward[1] = cp*sy;
+		forward[2] = -sp;
+	}
+	if (right)
+	{
+		right[0] = (-1*sr*sp*cy+-1*cr*-sy);
+		right[1] = (-1*sr*sp*sy+-1*cr*cy);
+		right[2] = -1*sr*cp;
+	}
+	if (up)
+	{
+		up[0] = (cr*sp*cy+-sr*-sy);
+		up[1] = (cr*sp*sy+-sr*cy);
+		up[2] = cr*cp;
+	}
+}
+
+
 struct Point
 {
 	long x, y;

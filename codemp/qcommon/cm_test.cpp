@@ -30,7 +30,7 @@ CM_PointLeafnum_r
 ==================
 */
 int CM_PointLeafnum_r( const vec3_t p, int num, clipMap_t *local ) {
-	float		d;
+	cm_float	d;
 	cNode_t		*node;
 	cplane_t	*plane;
 
@@ -42,7 +42,7 @@ int CM_PointLeafnum_r( const vec3_t p, int num, clipMap_t *local ) {
 		if (plane->type < 3)
 			d = p[plane->type] - plane->dist;
 		else
-			d = DotProduct (plane->normal, p) - plane->dist;
+			d = CM_DotProduct (plane->normal, p) - plane->dist;
 		if (d < 0)
 			num = node->children[1];
 		else
@@ -209,7 +209,7 @@ int CM_PointContents( const vec3_t p, clipHandle_t model ) {
 	cLeaf_t		*leaf;
 	cbrush_t	*b;
 	int			contents;
-	float		d;
+	cm_float		d;
 	cmodel_t	*clipm;
 	clipMap_t	*local;
 
@@ -244,7 +244,7 @@ int CM_PointContents( const vec3_t p, clipHandle_t model ) {
 
 		// see if the point is in the brush
 		for ( i = 0 ; i < b->numsides ; i++ ) {
-			d = DotProduct( p, b->sides[i].plane->normal );
+			d = CM_DotProduct( p, b->sides[i].plane->normal );
 // FIXME test for Cash
 //			if ( d >= b->sides[i].plane->dist ) {
 			if ( d > b->sides[i].plane->dist ) {
@@ -281,12 +281,12 @@ int	CM_TransformedPointContents( const vec3_t p, clipHandle_t model, const vec3_
 	if ( model != BOX_MODEL_HANDLE &&
 	(angles[0] || angles[1] || angles[2]) )
 	{
-		AngleVectors (angles, forward, right, up);
+		CM_AngleVectors (angles, forward, right, up);
 
 		VectorCopy (p_l, temp);
-		p_l[0] = DotProduct (temp, forward);
-		p_l[1] = -DotProduct (temp, right);
-		p_l[2] = DotProduct (temp, up);
+		p_l[0] = CM_DotProduct (temp, forward);
+		p_l[1] = -CM_DotProduct (temp, right);
+		p_l[2] = CM_DotProduct (temp, up);
 	}
 
 	return CM_PointContents( p_l, model );
@@ -464,4 +464,3 @@ int CM_WriteAreaBits (byte *buffer, int area)
 
 	return bytes;
 }
-
