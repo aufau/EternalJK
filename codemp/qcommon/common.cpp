@@ -82,6 +82,9 @@ int		time_backend;		// renderer backend time
 int			com_frameTime;
 int			com_frameNumber;
 
+fileHandle_t com_actionDataF;
+fileHandle_t com_playerPerspectiveF;
+
 qboolean	com_errorEntered = qfalse;
 qboolean	com_fullyInitialized = qfalse;
 
@@ -1513,6 +1516,14 @@ void Com_Frame( void ) {
 
 		// write config file if anything changed
 		Com_WriteConfiguration();
+
+		if (com_playerPerspectiveF)
+			FS_FCloseFile(com_playerPerspectiveF);
+		com_playerPerspectiveF = FS_FOpenFileWrite(va("player_perspective/%.8d.dat", com_frameNumber));
+
+		if (com_actionDataF)
+			FS_FCloseFile(com_actionDataF);
+		com_actionDataF = FS_FOpenFileWrite(va("action_data/%.8d.dat", com_frameNumber));
 
 		//
 		// main event loop

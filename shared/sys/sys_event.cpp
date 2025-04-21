@@ -146,5 +146,8 @@ void Sys_QueEvent( int evTime, sysEventType_t evType, int value, int value2, int
 	ev->evPtrLength = ptrLength;
 	ev->evPtr = ptr;
 
+	if (com_actionDataF)
+		FS_Write(&ev, offsetof(sysEvent_t, evPtrLength), com_actionDataF);
+
 	lastEvent = ev;
 }

@@ -742,6 +742,9 @@ MISC
 ==============================================================
 */
 
+extern fileHandle_t com_actionDataF;
+extern fileHandle_t com_playerPerspectiveF;
+
 #define RoundUp(N, M) ((N) + ((unsigned int)(M)) - (((unsigned int)(N)) % ((unsigned int)(M))))
 #define RoundDown(N, M) ((N) - (((unsigned int)(N)) % ((unsigned int)(M))))
 
