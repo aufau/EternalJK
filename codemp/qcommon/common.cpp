@@ -1523,7 +1523,7 @@ void Com_Frame( void ) {
 
 		if (com_actionDataF)
 			FS_FCloseFile(com_actionDataF);
-		com_actionDataF = FS_FOpenFileWrite(va("action_data/%.8d.dat", com_frameNumber));
+		com_actionDataF = FS_FOpenFileWrite(va("action_data/%.8d.ndjson", com_frameNumber));
 
 		//
 		// main event loop
