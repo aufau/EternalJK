@@ -1206,6 +1206,8 @@ void Com_Init( char *commandLine ) {
 
 		Com_InitJournaling();
 
+		com_actionDataF = FS_FOpenFileWrite("action_data.ndjson");
+
 		// Add some commands here already so users can use them from config files
 		if ( com_developer && com_developer->integer ) {
 			Cmd_AddCommand ("error", Com_Error_f);
@@ -1521,10 +1523,6 @@ void Com_Frame( void ) {
 			FS_FCloseFile(com_playerPerspectiveF);
 		com_playerPerspectiveF = FS_FOpenFileWrite(va("player_perspective/%.8d.dat", com_frameNumber));
 
-		if (com_actionDataF)
-			FS_FCloseFile(com_actionDataF);
-		com_actionDataF = FS_FOpenFileWrite(va("action_data/%.8d.ndjson", com_frameNumber));
-
 		//
 		// main event loop
 		//
@@ -1721,6 +1719,16 @@ void Com_Shutdown (void)
 	if ( com_journalFile ) {
 		FS_FCloseFile( com_journalFile );
 		com_journalFile = 0;
+	}
+
+	if (com_actionDataF) {
+		FS_FCloseFile(com_actionDataF);
+		com_actionDataF = 0;
+	}
+
+	if (com_playerPerspectiveF) {
+		FS_FCloseFile(com_playerPerspectiveF);
+		com_playerPerspectiveF = 0;
 	}
 
 	MSG_shutdownHuffman();

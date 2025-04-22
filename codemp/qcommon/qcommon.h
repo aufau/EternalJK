@@ -742,6 +742,7 @@ MISC
 ==============================================================
 */
 
+extern int com_frameNumber;
 extern fileHandle_t com_actionDataF;
 extern fileHandle_t com_playerPerspectiveF;
 

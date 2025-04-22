@@ -105,7 +105,7 @@ static void Sys_WriteEventJSON(fileHandle_t f, const sysEvent_t* ev) {
 	case SE_KEY:
 	{
 		const char* keyName = Key_KeynumToString(ev->evValue);
-		json = va("{\"time\":%d,\"type\":\"%s\",\"code\":%d,\"name\":\"%s\",\"down\":%s}\n", ev->evTime, eventType, ev->evValue, keyName, ev->evValue2 ? "true" : "false");
+		json = va("{\"time\":%d,\"frame\":%d,\"type\":\"%s\",\"code\":%d,\"name\":\"%s\",\"down\":%s}\n", ev->evTime, com_frameNumber, eventType, ev->evValue, keyName, ev->evValue2 ? "true" : "false");
 		break;
 	}
 	case SE_CHAR:
@@ -121,19 +121,19 @@ static void Sys_WriteEventJSON(fileHandle_t f, const sysEvent_t* ev) {
 		else {
 			charName = "<?>"; // extended ascii, other control codes
 		}
-		json = va("{\"time\":%d,\"type\":\"%s\",\"code\":%d,\"name\":\"%s\",\"down\":%s}\n", ev->evTime, eventType, ev->evValue, charName, ev->evValue2 ? "true" : "false");
+		json = va("{\"time\":%d,\"frame\":%d,\"type\":\"%s\",\"code\":%d,\"name\":\"%s\",\"down\":%s}\n", ev->evTime, com_frameNumber, eventType, ev->evValue, charName, ev->evValue2 ? "true" : "false");
 		break;
 	}
 	case SE_MOUSE:
 	{
-		json = va("{\"time\":%d,\"type\":\"%s\",\"dx\":%d,\"dy\":%d}\n", ev->evTime, eventType, ev->evValue, ev->evValue2);
+		json = va("{\"time\":%d,\"frame\":%d,\"type\":\"%s\",\"dx\":%d,\"dy\":%d}\n", ev->evTime, com_frameNumber, eventType, ev->evValue, ev->evValue2);
 		break;
 	}
 	case SE_NONE:
 	case SE_CONSOLE:
 	default:
 	{
-		json = va("{\"time\":%d,\"type\":\"%s\"}\n", ev->evTime, eventType);
+		json = va("{\"time\":%d,\"frame\":%d,\"type\":\"%s\"}\n", ev->evTime, com_frameNumber, eventType);
 		break;
 	}
 	}
