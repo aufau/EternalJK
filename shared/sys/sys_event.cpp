@@ -121,7 +121,7 @@ static void Sys_WriteEventJSON(fileHandle_t f, const sysEvent_t* ev) {
 		else {
 			charName = "<?>"; // extended ascii, other control codes
 		}
-		json = va("{\"time\":%d,\"frame\":%d,\"type\":\"%s\",\"code\":%d,\"name\":\"%s\",\"down\":%s}\n", ev->evTime, com_frameNumber, eventType, ev->evValue, charName, ev->evValue2 ? "true" : "false");
+		json = va("{\"time\":%d,\"frame\":%d,\"type\":\"%s\",\"code\":%d,\"name\":\"%s\"}\n", ev->evTime, com_frameNumber, eventType, ev->evValue, charName);
 		break;
 	}
 	case SE_MOUSE:
