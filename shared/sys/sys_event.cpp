@@ -41,7 +41,7 @@ static sysEvent_t	eventQue[MAX_QUED_EVENTS] = {};
 static sysEvent_t	*lastEvent = nullptr;
 static uint32_t		eventHead = 0, eventTail = 0;
 
-static const char *Sys_EventName( sysEventType_t evType ) {
+const char *Sys_EventName( sysEventType_t evType ) {
 
 	static const char *evNames[SE_MAX] = {
 		"SE_NONE",
@@ -93,52 +93,6 @@ sysEvent_t Sys_GetEvent( void ) {
 	ev.evTime = Sys_Milliseconds();
 
 	return ev;
-}
-
-const char* Key_KeynumToString( int keynum );
-
-static void Sys_WriteEventJSON(fileHandle_t f, const sysEvent_t* ev) {
-	const char* eventType = Sys_EventName(ev->evType);
-	const char* json;
-
-	switch (ev->evType) {
-	case SE_KEY:
-	{
-		const char* keyName = Key_KeynumToString(ev->evValue);
-		json = va("{\"time\":%d,\"frame\":%d,\"type\":\"%s\",\"code\":%d,\"name\":\"%s\",\"down\":%s}\n", ev->evTime, com_frameNumber, eventType, ev->evValue, keyName, ev->evValue2 ? "true" : "false");
-		break;
-	}
-	case SE_CHAR:
-	{
-		const char* charName;
-
-		if ('a' - 'a' + 1 <= ev->evValue && ev->evValue <= 'z' - 'a' + 1) {
-			charName = va("Ctrl+%c", ev->evValue + 'a' - 1);
-		}
-		else if (0x20 < ev->evValue && ev->evValue < 0x7f) {
-			charName = va("%c", ev->evValue);
-		}
-		else {
-			charName = "<?>"; // extended ascii, other control codes
-		}
-		json = va("{\"time\":%d,\"frame\":%d,\"type\":\"%s\",\"code\":%d,\"name\":\"%s\"}\n", ev->evTime, com_frameNumber, eventType, ev->evValue, charName);
-		break;
-	}
-	case SE_MOUSE:
-	{
-		json = va("{\"time\":%d,\"frame\":%d,\"type\":\"%s\",\"dx\":%d,\"dy\":%d}\n", ev->evTime, com_frameNumber, eventType, ev->evValue, ev->evValue2);
-		break;
-	}
-	case SE_NONE:
-	case SE_CONSOLE:
-	default:
-	{
-		json = va("{\"time\":%d,\"frame\":%d,\"type\":\"%s\"}\n", ev->evTime, com_frameNumber, eventType);
-		break;
-	}
-	}
-
-	FS_Write(json, strlen(json), f);
 }
 
 /*
@@ -193,8 +147,4 @@ void Sys_QueEvent( int evTime, sysEventType_t evType, int value, int value2, int
 	ev->evPtr = ptr;
 
 	lastEvent = ev;
-
-	if (com_actionDataF) {
-		Sys_WriteEventJSON(com_actionDataF, ev);
-	}
 }
