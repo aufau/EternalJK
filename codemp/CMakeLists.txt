@@ -216,6 +216,8 @@ if(BuildMPEngine OR BuildMPDed)
 	set(MPEngineAndDedFiles ${MPEngineAndDedFiles} ${MPEngineAndDedGameFiles})
 
 	set(MPEngineAndDedCommonFiles
+		"${MPDir}/qcommon/json.cpp"
+		"${MPDir}/qcommon/json.h"
 		"${MPDir}/qcommon/q_shared.h"
 		"${SharedDir}/qcommon/q_platform.h"
 		"${MPDir}/qcommon/cm_load.cpp"
