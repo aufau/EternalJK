@@ -22,15 +22,16 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 // json.h -- JSON printer API
 
+typedef void (*jsonPrinterPrintChar_f)(char);
+typedef void (*jsonPrinterPrintChars_f)(const char *, int len);
+
 typedef struct jsonPrinter_s {
-	char *buf;
-	char *bufend;
-	char *cursor;
-	bool overflow;
+	jsonPrinterPrintChar_f PrintChar;
+	jsonPrinterPrintChars_f PrintChars;
+	char lastChar;
 } jsonPrinter_t;
 
-void JSON_InitPrinter(jsonPrinter_t *p, char *buf, int buflen);
-int JSON_PrintedLength(jsonPrinter_t *p);
+void JSON_InitPrinter(jsonPrinter_t *p, jsonPrinterPrintChar_f printChar, jsonPrinterPrintChars_f printChars);
 void JSON_PrintObjectStart(jsonPrinter_t *p);
 void JSON_PrintObjectEnd(jsonPrinter_t *p);
 void JSON_PrintArrayStart(jsonPrinter_t *p);
@@ -41,3 +42,19 @@ void JSON_PrintCString(jsonPrinter_t *p, const char *string);
 void JSON_PrintInt32(jsonPrinter_t *p, int32_t i);
 void JSON_PrintByte(jsonPrinter_t *p, byte b);
 void JSON_PrintFloat(jsonPrinter_t *p, float f);
+
+//
+// Buffered file stream
+//
+
+typedef struct jsonFileStream_s {
+	fileHandle_t fileHandle;
+	char *buf;
+	char *bufend;
+	char *cursor;
+} jsonFileStream_t;
+
+void JSON_FileStreamInit(jsonFileStream_t *s, fileHandle_t fh, char *buf, int buflen);
+void JSON_FileStreamClose(jsonFileStream_t *s);
+void JSON_FileStreamPutChar(jsonFileStream_t *s, char ch);
+void JSON_FileStreamPutChars(jsonFileStream_t *s, const char *chars, int size);

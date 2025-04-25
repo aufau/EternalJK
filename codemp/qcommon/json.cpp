@@ -23,28 +23,25 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 // json.cpp  -- JSON printer
 
-void JSON_InitPrinter(jsonPrinter_t *p, char *buf, int buflen)
+void JSON_InitPrinter(jsonPrinter_t *p, jsonPrinterPrintChar_f printChar, jsonPrinterPrintChars_f printChars)
 {
-	p->buf = buf;
-	p->cursor = buf;
-	p->bufend = buf + buflen;
-	p->overflow = false;
-}
-
-int JSON_PrintedLength(jsonPrinter_t *p)
-{
-	return (int)(p->cursor - p->buf);
+	p->PrintChar = printChar;
+	p->PrintChars = printChars;
+	p->lastChar = 0;
 }
 
 static void JSON_PrintChar(jsonPrinter_t *p, char ch)
 {
-	if (p->cursor >= p->bufend) {
-		p->overflow = true;
-		return;
-	}
+	p->PrintChar(ch);
+	p->lastChar = ch;
+}
 
-	p->cursor[0] = ch;
-	p->cursor++;
+static void JSON_PrintChars(jsonPrinter_t *p, const char *chars, int len)
+{
+	p->PrintChars(chars, len);
+	if (len > 0) {
+		p->lastChar = chars[len - 1];
+	}
 }
 
 void JSON_PrintObjectStart(jsonPrinter_t *p)
@@ -69,55 +66,27 @@ void JSON_PrintArrayEnd(jsonPrinter_t *p)
 
 void JSON_PrintKey(jsonPrinter_t *p, const char *key)
 {
-	if (p->cursor > p->buf) {
-		if (p->cursor[-1] != '{') {
-			if (p->cursor >= p->bufend) {
-				p->overflow = true;
-				return;
-			}
-
-			p->cursor[0] = ',';
-			p->cursor++;
-		}
+	if (p->lastChar && p->lastChar != '{') {
+		JSON_PrintChar(p, ',');
 	}
 
 	int keylen = strlen(key);
 
-	if (p->cursor + keylen + 3 >= p->bufend) {
-		p->overflow = true;
-		return;
-	}
-
-	p->cursor[0] = '"';
-	memcpy(p->cursor + 1, key, keylen);
-	p->cursor[keylen + 1] = '"';
-	p->cursor[keylen + 2] = ':';
-	p->cursor += keylen + 3;
+	JSON_PrintChar(p, '"');
+	JSON_PrintChars(p, key, keylen);
+	JSON_PrintChar(p, '"');
+	JSON_PrintChar(p, ':');
 }
 
 static void JSON_PrintValue(jsonPrinter_t *p, const char *value)
 {
-	if (p->cursor > p->buf) {
-		if (p->cursor[-1] != '[' && p->cursor[-1] != ':') {
-			if (p->cursor >= p->bufend) {
-				p->overflow = true;
-				return;
-			}
-
-			p->cursor[0] = ',';
-			p->cursor++;
-		}
+	if (p->lastChar && p->lastChar != '[' && p->lastChar != ':') {
+		JSON_PrintChar(p, ',');
 	}
 
 	int len = strlen(value);
 
-	if (p->cursor + len >= p->bufend) {
-		p->overflow = true;
-		return;
-	}
-
-	memcpy(p->cursor, value, len);
-	p->cursor += len;
+	JSON_PrintChars(p, value, len);
 }
 
 void JSON_PrintBool(jsonPrinter_t *p, qboolean value)
@@ -127,20 +96,8 @@ void JSON_PrintBool(jsonPrinter_t *p, qboolean value)
 
 void JSON_PrintCString(jsonPrinter_t *p, const char *string)
 {
-	if (p->overflow) {
-		return;
-	}
-
-	if (p->cursor > p->buf) {
-		if (p->cursor[-1] != '[' && p->cursor[-1] != ':') {
-			if (p->cursor >= p->bufend) {
-				p->overflow = true;
-				return;
-			}
-
-			p->cursor[0] = ',';
-			p->cursor++;
-		}
+	if (p->lastChar && p->lastChar != '[' && p->lastChar != ':') {
+		JSON_PrintChar(p, ',');
 	}
 
 	JSON_PrintChar(p, '"');
@@ -148,30 +105,14 @@ void JSON_PrintCString(jsonPrinter_t *p, const char *string)
 	for (const char *in = string; *in != '\0'; in++) {
 		char ch = *in;
 		if (ch < 0x20) {
-			if (p->cursor + 5 >= p->bufend) {
-				p->overflow = true;
-				return;
-			}
-
-			sprintf(p->cursor, "u%.4x", ch);
-			p->cursor += 5;
+			char hex[6];
+			sprintf(hex, "u%.4x", ch);
+			JSON_PrintChars(p, hex, 5);
 		} else if (ch == '"' || ch == '\\') {
-			if (p->cursor + 2 >= p->bufend) {
-				p->overflow = true;
-				return;
-			}
-
-			p->cursor[0] = '\\';
-			p->cursor[1] = ch;
-			p->cursor += 2;
+			JSON_PrintChar(p, '"');
+			JSON_PrintChar(p, '\\');
 		} else {
-			if (p->cursor + 1 >= p->bufend) {
-				p->overflow = true;
-				return;
-			}
-
-			p->cursor[0] = ch;
-			p->cursor++;
+			JSON_PrintChar(p, ch);
 		}
 	}
 
@@ -197,4 +138,67 @@ void JSON_PrintFloat(jsonPrinter_t *p, float f)
 	char number[20]; // -1.0000000000e-126
 	snprintf(number, sizeof(number), "%.10e", f);
 	JSON_PrintValue(p, number);
+}
+
+//
+// Buffered file stream
+//
+
+static void JSON_FileStreamFlush(jsonFileStream_t *s)
+{
+	FS_Write(s->buf, s->cursor - s->buf, s->fileHandle);
+	s->cursor = s->buf;
+}
+
+void JSON_FileStreamInit(jsonFileStream_t *s, fileHandle_t fh, char *buf, int buflen)
+{
+	s->fileHandle = fh;
+	s->buf = buf;
+	s->bufend = buf + buflen;
+	s->cursor = buf;
+}
+
+void JSON_FileStreamClose(jsonFileStream_t *s)
+{
+	JSON_FileStreamFlush(s);
+
+	s->fileHandle = 0;
+	s->buf = 0;
+	s->bufend = 0;
+	s->cursor = 0;
+}
+
+void JSON_FileStreamPutChar(jsonFileStream_t *s, char ch)
+{
+	if (s->cursor >= s->bufend) {
+		JSON_FileStreamFlush(s);
+	}
+
+	s->cursor[0] = ch;
+	s->cursor++;
+}
+
+void JSON_FileStreamPutChars(jsonFileStream_t *s, const char *chars, int size)
+{
+	while (size > 0) {
+		qboolean flush;
+		int copySize = size;
+
+		if (s->cursor + copySize > s->bufend) {
+			copySize = (int)(s->bufend - s->cursor);
+			flush = qtrue;
+		} else {
+			flush = qfalse;
+		}
+
+		memcpy(s->cursor, chars, copySize);
+
+		s->cursor += copySize;
+		chars += copySize;
+		size -= copySize;
+
+		if (flush) {
+			JSON_FileStreamFlush(s);
+		}
+	}
 }
