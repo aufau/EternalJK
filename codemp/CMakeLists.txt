@@ -426,6 +426,7 @@ if(BuildMPEngine)
 	#    Source Files
 
 	set(MPEngineClientFiles
+		"${MPDir}/client/cl_ai.cpp"
 		"${MPDir}/client/cl_avi.cpp"
 		"${MPDir}/client/cl_cgame.cpp"
 		"${MPDir}/client/cl_cgameapi.cpp"

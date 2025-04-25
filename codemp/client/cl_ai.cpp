@@ -1,0 +1,237 @@
+/*
+===========================================================================
+Copyright (C) 2025, OpenJK contributors
+
+This file is part of the OpenJK source code.
+
+OpenJK is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License version 2 as
+published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, see <http://www.gnu.org/licenses/>.
+===========================================================================
+*/
+
+// cl_ai.c  -- training and interfacing with AI model acting as player
+
+#include "client.h"
+#include "qcommon/json.h"
+
+extern netField_t playerStateFields[];
+extern int playerStateFieldsNum;
+
+extern netField_t entityStateFields[];
+extern int entityStateFieldsNum;
+
+struct aiStatic_s {
+	jsonPrinter_t	jp;
+	jsonFileStream_t ppfs;
+};
+
+struct aiStatic_s ais;
+
+
+static void AI_JP_PrintChar(char ch)
+{
+	JSON_FileStreamPutChar(&ais.ppfs, ch);
+}
+
+static void AI_JP_PrintChars(const char *chars, int len)
+{
+	JSON_FileStreamPutChars(&ais.ppfs, chars, len);
+}
+
+static void AI_JP_Init(char *buf, int buflen)
+{
+	JSON_FileStreamInit(&ais.ppfs, com_playerPerspectiveF, buf, buflen);
+	JSON_InitPrinter(&ais.jp, AI_JP_PrintChar, AI_JP_PrintChars);
+}
+
+static void AI_JP_Close()
+{
+	JSON_FileStreamClose(&ais.ppfs);
+}
+
+static void AI_JP_ObjectStart(void)
+{
+	JSON_PrintObjectStart(&ais.jp);
+}
+
+static void AI_JP_ObjectEnd(void)
+{
+	JSON_PrintObjectEnd(&ais.jp);
+}
+
+static void AI_JP_ArrayStart(void)
+{
+	JSON_PrintArrayStart(&ais.jp);
+}
+
+static void AI_JP_ArrayEnd(void)
+{
+	JSON_PrintArrayEnd(&ais.jp);
+}
+
+static void AI_JP_Key(const char *key)
+{
+	JSON_PrintKey(&ais.jp, key);
+}
+
+static void AI_JP_Int32(int i)
+{
+	JSON_PrintInt32(&ais.jp, i);
+}
+
+static void AI_JP_Byte(byte b)
+{
+	JSON_PrintByte(&ais.jp, b);
+}
+
+static void AI_JP_Bool(qboolean value)
+{
+	JSON_PrintBool(&ais.jp, value);
+}
+
+static void AI_JP_Float(float f)
+{
+	JSON_PrintFloat(&ais.jp, f);
+}
+
+static void AI_JP_PlayerState(const playerState_t *ps)
+{
+	AI_JP_ObjectStart();
+	{
+		const netField_t *PSFields = playerStateFields;
+		const netField_t *field;
+		int numFields = playerStateFieldsNum;
+
+		for (field = PSFields; field < PSFields + numFields; field++) {
+			void *fp = (byte *)ps + field->offset;
+
+			AI_JP_Key(field->name);
+
+			if (field->bits == 0) {
+				// float
+				AI_JP_Float(*(float *)fp);
+			} else if (field->bits == 1) {
+				// qboolean
+				AI_JP_Bool(*(qboolean *)fp);
+			} else {
+				// integer
+				AI_JP_Int32(*(int *)fp);
+			}
+		}
+
+		AI_JP_Key("stats");
+		AI_JP_ArrayStart();
+		{
+			for (int i = 0; i < MAX_STATS; i++) {
+				AI_JP_Int32(ps->stats[i]);
+			}
+		}
+		AI_JP_ArrayEnd();
+
+		AI_JP_Key("persistant");
+		AI_JP_ArrayStart();
+		{
+			for (int i = 0; i < MAX_PERSISTANT; i++) {
+				AI_JP_Int32(ps->persistant[i]);
+			}
+		}
+		AI_JP_ArrayEnd();
+
+		AI_JP_Key("powerups");
+		AI_JP_ArrayStart();
+		{
+			for (int i = 0; i < MAX_POWERUPS; i++) {
+				AI_JP_Int32(ps->powerups[i]);
+			}
+		}
+		AI_JP_ArrayEnd();
+
+		AI_JP_Key("ammo");
+		AI_JP_ArrayStart();
+		{
+			for (int i = 0; i < MAX_AMMO; i++) {
+				AI_JP_Int32(ps->ammo[i]);
+			}
+		}
+		AI_JP_ArrayEnd();
+	}
+	AI_JP_ObjectEnd();
+}
+
+static void AI_JP_EntityState(const entityState_t *es)
+{
+	AI_JP_ObjectStart();
+	{
+		const netField_t *ESFields = entityStateFields;
+		const netField_t *field;
+		int numFields = entityStateFieldsNum;
+
+		AI_JP_Key("number"); AI_JP_Int32(es->number);
+
+		for (field = ESFields; field < ESFields + numFields; field++) {
+			void *fp = (byte *)es + field->offset;
+
+			AI_JP_Key(field->name);
+
+			if (field->bits == 0) {
+				// float
+				AI_JP_Float(*(float *)fp);
+			} else if (field->bits == 1) {
+				// qboolean
+				AI_JP_Bool(*(qboolean *)fp);
+			} else {
+				// integer
+				AI_JP_Int32(*(int *)fp);
+			}
+		}
+
+	}
+	AI_JP_ObjectEnd();
+}
+
+void AI_RecordClientSnapshot(const clSnapshot_t *snap)
+{
+	char buf[4096];
+
+	AI_JP_Init(buf, sizeof(buf));
+
+	AI_JP_ObjectStart();
+	{
+		AI_JP_Key("frame"); AI_JP_Int32(com_frameNumber);
+		// AI_JP_Key("valid"); AI_JP_Bool(snap->valid);
+		// AI_JP_Key("snapFlags"); AI_JP_Int32(snap->snapFlags);
+		AI_JP_Key("serverTime"); AI_JP_Int32(snap->serverTime);
+		AI_JP_Key("messageNum"); AI_JP_Int32(snap->messageNum);
+		AI_JP_Key("deltaNum"); AI_JP_Int32(snap->deltaNum);
+		AI_JP_Key("ping"); AI_JP_Int32(snap->ping);
+		AI_JP_Key("areamask"); AI_JP_ArrayStart(); {
+			for (int i = 0; i < MAX_MAP_AREA_BYTES; i++) {
+				AI_JP_Byte(snap->areamask[i]);
+			}
+		}; AI_JP_ArrayEnd();
+		AI_JP_Key("cmdNum"); AI_JP_Int32(snap->cmdNum);
+		AI_JP_Key("ps"); AI_JP_PlayerState(&snap->ps);
+		AI_JP_Key("numEntities"); AI_JP_Int32(snap->numEntities);
+		AI_JP_Key("entities"); AI_JP_ArrayStart();
+		{
+			for (int i = 0; i < snap->numEntities; i++) {
+				int entNum = (snap->parseEntitiesNum + i) & (MAX_PARSE_ENTITIES - 1);
+				AI_JP_EntityState(&cl.parseEntities[entNum]);
+			}
+		}; AI_JP_ArrayEnd();
+		AI_JP_Key("serverCommandNum"); AI_JP_Int32(snap->serverCommandNum);
+	}
+	AI_JP_ObjectEnd();
+
+	AI_JP_PrintChar('\n');
+	AI_JP_Close();
+}

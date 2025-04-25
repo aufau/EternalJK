@@ -1257,6 +1257,7 @@ void Com_Init( char *commandLine ) {
 		Com_InitJournaling();
 
 		com_actionDataF = FS_FOpenFileWrite("action_data.ndjson");
+		com_playerPerspectiveF = FS_FOpenFileWrite(va("player_perspective.ndjson"));
 
 		// Add some commands here already so users can use them from config files
 		if ( com_developer && com_developer->integer ) {
@@ -1568,10 +1569,6 @@ void Com_Frame( void ) {
 
 		// write config file if anything changed
 		Com_WriteConfiguration();
-
-		if (com_playerPerspectiveF)
-			FS_FCloseFile(com_playerPerspectiveF);
-		com_playerPerspectiveF = FS_FOpenFileWrite(va("player_perspective/%.8d.dat", com_frameNumber));
 
 		//
 		// main event loop

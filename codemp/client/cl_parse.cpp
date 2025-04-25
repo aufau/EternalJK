@@ -353,6 +353,10 @@ void CL_ParseSnapshot( msg_t *msg ) {
 		cl.snap.deltaNum, cl.snap.ping );
 	}
 
+	if (com_playerPerspectiveF) {
+		AI_RecordClientSnapshot(&cl.snap);
+	}
+
 	cl.newSnapshots = qtrue;
 }
 

@@ -2083,11 +2083,6 @@ void CL_PacketEvent( const netadr_t *from, msg_t *msg ) {
 		return;		// out of order, duplicated, etc
 	}
 
-	if (com_playerPerspectiveF) {
-		FS_Write(&msg->cursize, sizeof(msg->cursize), com_playerPerspectiveF);
-		FS_Write(msg->data, msg->cursize, com_playerPerspectiveF);
-	}
-
 	// the header is different lengths for reliable and unreliable messages
 	headerBytes = msg->readcount;
 

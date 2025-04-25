@@ -814,15 +814,6 @@ entityState_t communication
 */
 
 
-typedef struct netField_s {
-	const char	*name;
-	size_t	offset;
-	int		bits;		// 0 = float
-#ifndef FINAL_BUILD
-	unsigned	mCount;
-#endif
-} netField_t;
-
 // using the stringizing operator to save typing...
 #define	NETF(x) #x,offsetof(entityState_t, x)
 
@@ -1020,6 +1011,8 @@ netField_t	entityStateFields[] =
 { NETF(userVec2[1]), 1 },
 { NETF(userVec2[2]), 1 }
 };
+
+int entityStateFieldsNum = ARRAY_LEN(entityStateFields);
 
 // if (int)f == f and (int)f + ( 1<<(FLOAT_INT_BITS-1) ) < ( 1 << FLOAT_INT_BITS )
 // the float will be sent with FLOAT_INT_BITS, otherwise all 32 bits will be sent
@@ -1458,6 +1451,8 @@ netField_t	playerStateFields[] =
 { PSF(userVec2[2]), 1 }
 };
 
+int playerStateFieldsNum = ARRAY_LEN(playerStateFields);
+
 netField_t	pilotPlayerStateFields[] =
 {
 { PSF(commandTime), 32 },
@@ -1870,6 +1865,8 @@ netField_t	playerStateFields[] =
 { PSF(userVec2[1]), 1 },
 { PSF(userVec2[2]), 1 }
 };
+
+int playerStateFieldsNum = ARRAY_LEN(playerStateFields);
 
 //=====_OPTIMIZED_VEHICLE_NETWORKING=======================================================================
 #endif//_OPTIMIZED_VEHICLE_NETWORKING

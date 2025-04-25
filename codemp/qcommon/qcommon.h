@@ -45,6 +45,15 @@ typedef struct msg_s {
 	int		bit;				// for bitwise reads and writes
 } msg_t;
 
+typedef struct netField_s {
+	const char	*name;
+	size_t	offset;
+	int		bits;		// 0 = float
+#ifndef FINAL_BUILD
+	unsigned	mCount;
+#endif
+} netField_t;
+
 void MSG_Init (msg_t *buf, byte *data, int length);
 void MSG_InitOOB( msg_t *buf, byte *data, int length );
 void MSG_Clear (msg_t *buf);
