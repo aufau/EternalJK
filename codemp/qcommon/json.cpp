@@ -46,6 +46,10 @@ static void JSON_PrintChars(jsonPrinter_t *p, const char *chars, int len)
 
 void JSON_PrintObjectStart(jsonPrinter_t *p)
 {
+	if (p->lastChar && p->lastChar != '[' && p->lastChar != ':') {
+		JSON_PrintChar(p, ',');
+	}
+
 	JSON_PrintChar(p, '{');
 }
 
@@ -56,6 +60,10 @@ void JSON_PrintObjectEnd(jsonPrinter_t *p)
 
 void JSON_PrintArrayStart(jsonPrinter_t *p)
 {
+	if (p->lastChar && p->lastChar != '[' && p->lastChar != ':') {
+		JSON_PrintChar(p, ',');
+	}
+
 	JSON_PrintChar(p, '[');
 }
 
