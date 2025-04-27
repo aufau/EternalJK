@@ -95,12 +95,17 @@ static cvar_t	*net_socksPassword;
 static cvar_t	*net_ip;
 static cvar_t	*net_port;
 
+static cvar_t	*net_ai_enabled;
+static cvar_t	*net_ai_ip;
+static cvar_t	*net_ai_port;
+
 static cvar_t	*net_dropsim;
 
 static struct sockaddr_in	socksRelayAddr;
 
 static SOCKET	ip_socket = INVALID_SOCKET;
 static SOCKET	socks_socket = INVALID_SOCKET;
+static SOCKET	ai_ip_socket = INVALID_SOCKET;
 
 #define	MAX_IPS		16
 static	int		numIP;
@@ -247,12 +252,12 @@ Receive one packet
 int	recvfromCount;
 #endif
 
-qboolean NET_GetPacket( netadr_t *net_from, msg_t *net_message, fd_set *fdr ) {
+qboolean NET_GetPacket( netadr_t *net_from, msg_t *net_message ) {
 	int ret, err;
 	socklen_t fromlen;
 	struct sockaddr_in from;
 
-	if ( ip_socket == INVALID_SOCKET || !FD_ISSET(ip_socket, fdr) ) {
+	if ( ip_socket == INVALID_SOCKET ) {
 		return qfalse;
 	}
 
@@ -293,6 +298,41 @@ qboolean NET_GetPacket( netadr_t *net_from, msg_t *net_message, fd_set *fdr ) {
 
 	if( ret >= net_message->maxsize ) {
 		Com_Printf( "Oversize packet from %s\n", NET_AdrToString (net_from) );
+		return qfalse;
+	}
+
+	net_message->cursize = ret;
+	return qtrue;
+}
+
+qboolean NET_GetAIPacket( netadr_t *net_from, aimsg_t *net_message ) {
+	int ret, err;
+	socklen_t fromlen;
+	struct sockaddr_in from;
+
+	if ( ai_ip_socket == INVALID_SOCKET ) {
+		return qfalse;
+	}
+
+	fromlen = sizeof( from );
+	ret = recvfrom( ai_ip_socket, (char *)net_message->data, net_message->maxsize, 0, (struct sockaddr *)&from, &fromlen );
+
+	if ( ret == SOCKET_ERROR ) {
+		err = socketError;
+
+		if( err == EAGAIN || err == ECONNRESET )
+			return qfalse;
+
+		Com_Printf( "NET_GetAIPacket: %s\n", NET_ErrorString() );
+		return qfalse;
+	}
+
+	memset( from.sin_zero, 0, 8 );
+
+	SockadrToNetadr( &from, net_from );
+
+	if( ret >= net_message->maxsize ) {
+		Com_Printf( "Oversize AI packet from %s\n", NET_AdrToString (net_from) );
 		return qfalse;
 	}
 
@@ -845,6 +885,42 @@ void NET_OpenIP( void )
 	}
 }
 
+/*
+====================
+NET_OpenIP
+====================
+*/
+void NET_OpenAI( void )
+{
+	int port = net_ai_port->integer;
+	int err;
+
+	NET_GetLocalAddress();
+
+	// automatically scan for a valid port, so multiple
+	// dedicated servers can be started without requiring
+	// a different net_port for each one
+
+	if ( net_ai_enabled->integer & NET_ENABLEV4 ) {
+		for ( int i=0 ; i < 20 ; i++ ) {
+			ai_ip_socket = NET_IPSocket( net_ai_ip->string, port + i, &err );
+			if ( ai_ip_socket != INVALID_SOCKET ) {
+				Cvar_SetValue( "net_ai_port", port + i );
+
+				// if ( net_socksEnabled->integer )
+				// 	NET_OpenSocks( port + i );
+				break;
+			}
+			else {
+				if ( err == EAFNOSUPPORT )
+					break;
+			}
+		}
+		if ( ai_ip_socket == INVALID_SOCKET )
+			Com_Printf( "WARNING: Couldn't bind to a v4 ip address.\n");
+	}
+}
+
 //===================================================================
 
 /*
@@ -893,6 +969,18 @@ static qboolean NET_GetCvars( void ) {
 
 	net_dropsim = Cvar_Get( "net_dropsim", "", CVAR_TEMP);
 
+	net_ai_enabled = Cvar_Get( "net_ai_enabled", "1", CVAR_LATCH | CVAR_ARCHIVE_ND );
+	modified = net_ai_enabled->modified;
+	net_ai_enabled->modified = qfalse;
+
+	net_ai_ip = Cvar_Get( "net_ai_ip", "localhost", CVAR_LATCH );
+	modified += net_ai_ip->modified;
+	net_ai_ip->modified = qfalse;
+
+	net_ai_port = Cvar_Get( "net_ai_port", XSTRING( 29010 ), CVAR_LATCH );
+	modified += net_ai_port->modified;
+	net_ai_port->modified = qfalse;
+
 	return modified ? qtrue : qfalse;
 }
 
@@ -909,7 +997,7 @@ void NET_Config( qboolean enableNetworking ) {
 	// get any latched changes to cvars
 	modified = NET_GetCvars();
 
-	if ( !net_enabled->integer )
+	if ( !net_enabled->integer && !net_ai_enabled->integer )
 		enableNetworking = qfalse;
 
 	// if enable state is the same and no cvars were modified, we have nothing to do
@@ -948,11 +1036,18 @@ void NET_Config( qboolean enableNetworking ) {
 			closesocket( socks_socket );
 			socks_socket = INVALID_SOCKET;
 		}
+
+		if ( ai_ip_socket != INVALID_SOCKET ) {
+			closesocket( ai_ip_socket );
+			ai_ip_socket = INVALID_SOCKET;
+		}
 	}
 
 	if ( start ) {
 		if ( net_enabled->integer )
 			NET_OpenIP();
+		if ( net_ai_enabled->integer )
+			NET_OpenAI();
 	}
 }
 
@@ -995,15 +1090,7 @@ void NET_Shutdown( void ) {
 #endif
 }
 
-/*
-====================
-NET_Event
-
-Called from NET_Sleep which uses select() to determine which sockets have seen action.
-====================
-*/
-
-void NET_Event(fd_set *fdr)
+void NET_IPEvent( void )
 {
 	byte bufData[MAX_MSGLEN + 1];
 	netadr_t from;
@@ -1013,7 +1100,7 @@ void NET_Event(fd_set *fdr)
 	{
 		MSG_Init(&netmsg, bufData, sizeof(bufData));
 
-		if(NET_GetPacket(&from, &netmsg, fdr))
+		if(NET_GetPacket(&from, &netmsg))
 		{
 			if(net_dropsim->value > 0.0f && net_dropsim->value <= 100.0f)
 			{
@@ -1030,6 +1117,42 @@ void NET_Event(fd_set *fdr)
 		else
 			break;
 	}
+}
+
+void NET_AI_IPEvent( void )
+{
+	char bufData[MAX_MSGLEN + 1];
+	aimsg_t msg;
+	netadr_t from;
+
+	while(1)
+	{
+		msg.maxsize = MAX_MSGLEN;
+		msg.cursize = 0;
+		msg.data = bufData;
+
+		if(NET_GetAIPacket(&from, &msg))
+		{
+			AI_PacketEvent(&from, &msg);
+		}
+		else
+			break;
+	}
+}
+
+/*
+====================
+NET_Event
+
+Called from NET_Sleep which uses select() to determine which sockets have seen action.
+====================
+*/
+void NET_Event(fd_set *fdr)
+{
+	if (FD_ISSET(ip_socket, fdr))
+		NET_IPEvent();
+	if (FD_ISSET(ai_ip_socket, fdr))
+		NET_AI_IPEvent();
 }
 
 /*
@@ -1052,6 +1175,10 @@ void NET_Sleep( int msec ) {
 	if (ip_socket != INVALID_SOCKET) {
 		FD_SET(ip_socket, &fdset); // network socket
 		highestfd = ip_socket;
+	}
+	if (ai_ip_socket != INVALID_SOCKET) {
+		FD_SET(ai_ip_socket, &fdset); // network socket
+		highestfd = ai_ip_socket > highestfd ? ai_ip_socket : highestfd;
 	}
 
 #ifdef _WIN32

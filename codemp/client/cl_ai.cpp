@@ -235,3 +235,14 @@ void AI_RecordClientSnapshot(const clSnapshot_t *snap)
 	AI_JP_PrintChar('\n');
 	AI_JP_Close();
 }
+
+void AI_PacketEvent( const netadr_t *from, aimsg_t *msg )
+{
+	int type, value, value2;
+
+	msg->data[msg->cursize] = '\0';
+	Com_DPrintf("AI_PacketEvent(): %s", msg->data);
+	sscanf(msg->data, "%d;%d;%d", &type, &value, &value2);
+
+	Sys_QueEvent(0, (sysEventType_t)type, value, value2, 0, 0);
+}

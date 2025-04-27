@@ -87,6 +87,7 @@ extern cvar_t *com_maxfps;
 extern cvar_t *com_maxfpsMinimized;
 extern cvar_t *com_maxfpsUnfocused;
 
+void 		Sys_QueEvent( int time, sysEventType_t type, int value, int value2, int ptrLength, void *ptr );
 sysEvent_t	Sys_GetEvent( void );
 const char *Sys_EventName( sysEventType_t evType );
 
