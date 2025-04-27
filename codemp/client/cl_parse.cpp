@@ -353,9 +353,15 @@ void CL_ParseSnapshot( msg_t *msg ) {
 		cl.snap.deltaNum, cl.snap.ping );
 	}
 
-	if (com_playerPerspectiveF) {
-		AI_RecordClientSnapshot(&cl.snap);
+	com_playerPerspectiveF = FS_FOpenFileWrite("player_perspective.ndjson");
+	for (int i = 0; i < 10; i++) {
+		const clSnapshot_t* snap = &cl.snapshots[(cl.snap.messageNum - i) & PACKET_MASK];
+		if (snap->valid) {
+			AI_RecordClientSnapshot(snap);
+		}
 	}
+	FS_FCloseFile(com_playerPerspectiveF);
+	com_playerPerspectiveF = 0;
 
 	cl.newSnapshots = qtrue;
 }
