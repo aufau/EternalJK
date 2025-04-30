@@ -149,44 +149,45 @@ void JSON_PrintFloat(jsonPrinter_t *p, float f)
 }
 
 //
-// Buffered file stream
+// Buffered stream
 //
 
-static void JSON_FileStreamFlush(jsonFileStream_t *s)
+static void JSON_BufferedStreamFlush(jsonBufferedStream_t *s)
 {
-	FS_Write(s->buf, s->cursor - s->buf, s->fileHandle);
+	s->PrintChars(s->buf, s->cursor - s->buf);
 	s->cursor = s->buf;
 }
 
-void JSON_FileStreamInit(jsonFileStream_t *s, fileHandle_t fh, char *buf, int buflen)
+
+void JSON_BufferedStreamInit(jsonBufferedStream_t *s, char *buf, int buflen, jsonPrinterPrintChars_f printChars)
 {
-	s->fileHandle = fh;
+	s->PrintChars = printChars;
 	s->buf = buf;
 	s->bufend = buf + buflen;
 	s->cursor = buf;
 }
 
-void JSON_FileStreamClose(jsonFileStream_t *s)
+void JSON_BufferedStreamClose(jsonBufferedStream_t *s)
 {
-	JSON_FileStreamFlush(s);
+	JSON_BufferedStreamFlush(s);
 
-	s->fileHandle = 0;
+	s->PrintChars = NULL;
 	s->buf = 0;
 	s->bufend = 0;
 	s->cursor = 0;
 }
 
-void JSON_FileStreamPutChar(jsonFileStream_t *s, char ch)
+void JSON_BufferedStreamPutChar(jsonBufferedStream_t *s, char ch)
 {
 	if (s->cursor >= s->bufend) {
-		JSON_FileStreamFlush(s);
+		JSON_BufferedStreamFlush(s);
 	}
 
 	s->cursor[0] = ch;
 	s->cursor++;
 }
 
-void JSON_FileStreamPutChars(jsonFileStream_t *s, const char *chars, int size)
+void JSON_BufferedStreamPutChars(jsonBufferedStream_t *s, const char *chars, int size)
 {
 	while (size > 0) {
 		qboolean flush;
@@ -206,7 +207,7 @@ void JSON_FileStreamPutChars(jsonFileStream_t *s, const char *chars, int size)
 		size -= copySize;
 
 		if (flush) {
-			JSON_FileStreamFlush(s);
+			JSON_BufferedStreamFlush(s);
 		}
 	}
 }

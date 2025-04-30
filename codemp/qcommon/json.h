@@ -44,17 +44,17 @@ void JSON_PrintByte(jsonPrinter_t *p, byte b);
 void JSON_PrintFloat(jsonPrinter_t *p, float f);
 
 //
-// Buffered file stream
+// Buffered stream
 //
 
-typedef struct jsonFileStream_s {
-	fileHandle_t fileHandle;
+typedef struct jsonBufferedStream_s {
+	jsonPrinterPrintChars_f PrintChars;
 	char *buf;
 	char *bufend;
 	char *cursor;
-} jsonFileStream_t;
+} jsonBufferedStream_t;
 
-void JSON_FileStreamInit(jsonFileStream_t *s, fileHandle_t fh, char *buf, int buflen);
-void JSON_FileStreamClose(jsonFileStream_t *s);
-void JSON_FileStreamPutChar(jsonFileStream_t *s, char ch);
-void JSON_FileStreamPutChars(jsonFileStream_t *s, const char *chars, int size);
+void JSON_BufferedStreamInit(jsonBufferedStream_t *s, char *buf, int buflen, jsonPrinterPrintChars_f printChars);
+void JSON_BufferedStreamClose(jsonBufferedStream_t *s);
+void JSON_BufferedStreamPutChar(jsonBufferedStream_t *s, char ch);
+void JSON_BufferedStreamPutChars(jsonBufferedStream_t *s, const char *chars, int size);

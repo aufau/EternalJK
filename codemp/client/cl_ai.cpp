@@ -31,31 +31,35 @@ extern int entityStateFieldsNum;
 
 struct aiStatic_s {
 	jsonPrinter_t	jp;
-	jsonFileStream_t ppfs;
+	jsonBufferedStream_t jpbs;
 };
 
 struct aiStatic_s ais;
 
-
 static void AI_JP_PrintChar(char ch)
 {
-	JSON_FileStreamPutChar(&ais.ppfs, ch);
+	JSON_BufferedStreamPutChar(&ais.jpbs, ch);
 }
 
 static void AI_JP_PrintChars(const char *chars, int len)
 {
-	JSON_FileStreamPutChars(&ais.ppfs, chars, len);
+	JSON_BufferedStreamPutChars(&ais.jpbs, chars, len);
 }
 
-static void AI_JP_Init(char *buf, int buflen)
+static void AI_JP_PrintCharsFile(const char *chars, int len)
 {
-	JSON_FileStreamInit(&ais.ppfs, com_playerPerspectiveF, buf, buflen);
+	FS_Write(chars, len, com_playerPerspectiveF);
+}
+
+static void AI_JP_InitFile(char *buf, int buflen)
+{
+	JSON_BufferedStreamInit(&ais.jpbs, buf, buflen, AI_JP_PrintCharsFile);
 	JSON_InitPrinter(&ais.jp, AI_JP_PrintChar, AI_JP_PrintChars);
 }
 
-static void AI_JP_Close()
+static void AI_JP_CloseFile()
 {
-	JSON_FileStreamClose(&ais.ppfs);
+	JSON_BufferedStreamClose(&ais.jpbs);
 }
 
 static void AI_JP_ObjectStart(void)
@@ -202,7 +206,7 @@ void AI_RecordClientSnapshot(const clSnapshot_t *snap)
 {
 	char buf[4096];
 
-	AI_JP_Init(buf, sizeof(buf));
+	AI_JP_InitFile(buf, sizeof(buf));
 
 	AI_JP_ObjectStart();
 	{
@@ -233,7 +237,7 @@ void AI_RecordClientSnapshot(const clSnapshot_t *snap)
 	AI_JP_ObjectEnd();
 
 	AI_JP_PrintChar('\n');
-	AI_JP_Close();
+	AI_JP_CloseFile();
 }
 
 void AI_PacketEvent( const netadr_t *from, aimsg_t *msg )
