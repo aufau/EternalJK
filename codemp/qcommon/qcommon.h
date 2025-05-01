@@ -45,12 +45,6 @@ typedef struct msg_s {
 	int		bit;				// for bitwise reads and writes
 } msg_t;
 
-typedef struct aimsg_s {
-	char	*data;
-	int		maxsize;
-	int		cursize;
-} aimsg_t;
-
 typedef struct netField_s {
 	const char	*name;
 	size_t	offset;
@@ -956,7 +950,8 @@ void CL_MouseEvent( int dx, int dy, int time );
 void CL_JoystickEvent( int axis, int value, int time );
 
 void CL_PacketEvent( const netadr_t *from, msg_t *msg );
-void AI_PacketEvent( const netadr_t *from, aimsg_t *msg );
+qboolean AI_AcceptConnection( const netadr_t *from );
+void AI_RecvData( const byte *data, int dataSize );
 
 void CL_ConsolePrint( const char *text );
 

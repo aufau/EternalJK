@@ -29,12 +29,80 @@ extern int playerStateFieldsNum;
 extern netField_t entityStateFields[];
 extern int entityStateFieldsNum;
 
+typedef void (*aiEventHandler_f)(const char *);
+
+typedef struct aiEventStream_s {
+	char *event;
+	int eventSize;
+	int eventCursor;
+	qboolean writeOverflow;
+	aiEventHandler_f EventHandler;
+} aiEventStream_t;
+
+#define AI_MAX_EVENT_SIZE 64
+
 struct aiStatic_s {
 	jsonPrinter_t	jp;
 	jsonBufferedStream_t jpbs;
+	char evBuf[AI_MAX_EVENT_SIZE + 1]; // extra byte for \0
+	aiEventStream_t evStream;
 };
 
 struct aiStatic_s ais;
+
+
+//
+// newline-delimited event stream for TCP
+//
+
+void AI_InitEventStream( aiEventStream_t *s, char *buf, int bufSize, aiEventHandler_f eventHandler ) {
+	s->event = buf;
+	s->eventSize = bufSize - 1; // save extra byte for \0
+	s->eventCursor = 0;
+	s->writeOverflow = qfalse;
+	s->EventHandler = eventHandler;
+}
+
+void AI_CloseEventStream( aiEventStream_t *s ) {
+	s->event = NULL;
+}
+
+qboolean AI_IsEventStreamOpen( aiEventStream_t *s ) {
+	return (qboolean)(s->event != NULL);
+}
+
+void AI_EventStreamWrite( aiEventStream_t *s, const char *data, int dataSize ) {
+	int dataCursor;
+
+	for (dataCursor = 0; dataCursor < dataSize; dataCursor++)
+	{
+		char ch = data[dataCursor];
+
+		if (s->eventCursor == s->eventSize) {
+			s->writeOverflow = qtrue;
+		}
+
+		if (s->writeOverflow) {
+			if (ch == '\n') {
+				Com_Printf("WARNING AI_EventStreamWrite: ignored oversize message\n");
+				s->writeOverflow = qfalse;
+				s->eventCursor = 0;
+			}
+		} else {
+			if (ch == '\n') {
+				s->event[s->eventCursor + 1] = '\0';
+				s->EventHandler(s->event);
+				s->eventCursor = 0;
+			} else {
+				s->event[s->eventCursor++] = ch;
+			}
+		}
+	}
+}
+
+//
+// JSON Stream
+//
 
 static void AI_JP_PrintChar(char ch)
 {
@@ -240,13 +308,30 @@ void AI_RecordClientSnapshot(const clSnapshot_t *snap)
 	AI_JP_CloseFile();
 }
 
-void AI_PacketEvent( const netadr_t *from, aimsg_t *msg )
+static void AI_PacketEvent( const char *event )
 {
 	int type, value, value2;
+	int ret;
 
-	msg->data[msg->cursize] = '\0';
-	Com_DPrintf("AI_PacketEvent(): %s", msg->data);
-	sscanf(msg->data, "%d;%d;%d", &type, &value, &value2);
+	Com_DPrintf("AI_PacketEvent(): %s", event);
+	ret = sscanf(event, "%d;%d;%d", &type, &value, &value2);
 
-	Sys_QueEvent(0, (sysEventType_t)type, value, value2, 0, 0);
+	if (ret == 3) {
+		Sys_QueEvent(0, (sysEventType_t)type, value, value2, 0, 0);
+	} else {
+		Com_Printf("AI_PacketEvent() ignoring malformed event: %s\n", event);
+	}
+}
+
+qboolean AI_AcceptConnection( const netadr_t *from )
+{
+	Com_Printf("AI Agent connected from %s\n", NET_AdrToString(from));
+	AI_InitEventStream(&ais.evStream, ais.evBuf, sizeof(ais.evBuf), AI_PacketEvent);
+	return qtrue;
+}
+
+void AI_RecvData( const byte *data, int dataSize ) {
+	if (AI_IsEventStreamOpen(&ais.evStream)) {
+		AI_EventStreamWrite(&ais.evStream, (const char *)data, dataSize);
+	}
 }
