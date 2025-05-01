@@ -1086,7 +1086,11 @@ static qboolean NET_GetCvars( void ) {
 
 	net_dropsim = Cvar_Get( "net_dropsim", "", CVAR_TEMP);
 
+#ifdef DEDICATED
+	net_ai_enabled = Cvar_Get( "net_ai_enabled", "0", CVAR_LATCH | CVAR_ARCHIVE_ND );
+#else
 	net_ai_enabled = Cvar_Get( "net_ai_enabled", "1", CVAR_LATCH | CVAR_ARCHIVE_ND );
+#endif
 	modified = net_ai_enabled->modified;
 	net_ai_enabled->modified = qfalse;
 

@@ -950,8 +950,6 @@ void CL_MouseEvent( int dx, int dy, int time );
 void CL_JoystickEvent( int axis, int value, int time );
 
 void CL_PacketEvent( const netadr_t *from, msg_t *msg );
-qboolean AI_AcceptConnection( const netadr_t *from );
-void AI_RecvData( const byte *data, int dataSize );
 
 void CL_ConsolePrint( const char *text );
 
@@ -992,6 +990,14 @@ void SCR_DebugGraph (float value, int color);	// FIXME: move logging to common?
 // AVI files have the start of pixel lines 4 byte-aligned
 #define AVI_LINE_PADDING 4
 
+qboolean AI_AcceptConnection( const netadr_t *from );
+// accept TCP connection
+
+void AI_RecvData( const byte *data, int dataSize );
+// receive streaming (TCP) socket data
+
+void AI_RecordSysEvent(const sysEvent_t *ev);
+// record system event
 
 //
 // server interface

@@ -85,3 +85,13 @@ void CL_StartHunkUsers( void ) {
 qboolean CL_ConnectedToRemoteServer( void ) {
 	return qfalse;
 }
+
+void AI_RecordSysEvent(const sysEvent_t *ev) {
+}
+
+void AI_RecvData( const byte *data, int dataSize ) {
+}
+
+qboolean AI_AcceptConnection( const netadr_t *from ) {
+	return qfalse;
+}

@@ -308,6 +308,52 @@ void AI_RecordClientSnapshot(const clSnapshot_t *snap)
 	AI_JP_CloseFile();
 }
 
+void AI_RecordSysEvent(const sysEvent_t *ev)
+{
+	if (!com_actionDataF) {
+		return;
+	}
+
+	const char* eventType = Sys_EventName(ev->evType);
+	const char* json;
+
+	switch (ev->evType) {
+	case SE_KEY: {
+		const char* keyName = Key_KeynumToString(ev->evValue);
+		json = va("{\"time\":%d,\"frame\":%d,\"type\":\"%s\",\"code\":%d,\"name\":\"%s\",\"down\":%s}\n", ev->evTime, com_frameNumber, eventType, ev->evValue, keyName, ev->evValue2 ? "true" : "false");
+		break;
+	}
+	case SE_CHAR: {
+		const char* charName;
+
+		if ('a' - 'a' + 1 <= ev->evValue && ev->evValue <= 'z' - 'a' + 1) {
+			charName = va("Ctrl+%c", ev->evValue + 'a' - 1);
+		}
+		else if (0x20 < ev->evValue && ev->evValue < 0x7f) {
+			charName = va("%c", ev->evValue);
+		}
+		else {
+			charName = "<?>"; // extended ascii, other control codes
+		}
+		json = va("{\"time\":%d,\"frame\":%d,\"type\":\"%s\",\"code\":%d,\"name\":\"%s\"}\n", ev->evTime, com_frameNumber, eventType, ev->evValue, charName);
+		break;
+	}
+	case SE_MOUSE: {
+		json = va("{\"time\":%d,\"frame\":%d,\"type\":\"%s\",\"dx\":%d,\"dy\":%d}\n", ev->evTime, com_frameNumber, eventType, ev->evValue, ev->evValue2);
+		break;
+	}
+	case SE_NONE:
+		return;
+	case SE_CONSOLE:
+	default: {
+		json = va("{\"time\":%d,\"frame\":%d,\"type\":\"%s\"}\n", ev->evTime, com_frameNumber, eventType);
+		break;
+	}
+	}
+
+	FS_Write(json, strlen(json), com_actionDataF);
+}
+
 static void AI_PacketEvent( const char *event )
 {
 	int type, value, value2;
