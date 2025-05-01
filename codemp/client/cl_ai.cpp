@@ -317,7 +317,9 @@ static void AI_PacketEvent( const char *event )
 	ret = sscanf(event, "%d;%d;%d", &type, &value, &value2);
 
 	if (ret == 3) {
-		Sys_QueEvent(0, (sysEventType_t)type, value, value2, 0, 0);
+		if (!Key_GetCatcher()) {
+			Sys_QueEvent(0, (sysEventType_t)type, value, value2, 0, 0);
+		}
 	} else {
 		Com_Printf("AI_PacketEvent() ignoring malformed event: %s\n", event);
 	}
