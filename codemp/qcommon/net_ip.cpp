@@ -1093,18 +1093,17 @@ NET_OpenIP
 */
 void NET_OpenAI( void )
 {
-	int port = net_ai_port->integer;
-
-	NET_GetLocalAddress();
-
-	// automatically scan for a valid port, so multiple
-	// dedicated servers can be started without requiring
-	// a different net_port for each one
-
-	// AI UDP/TCP port must be the same (to simplify discovery)
 	if ( net_ai_enabled->integer & NET_ENABLEV4 ) {
+		int port = net_ai_port->integer;
 		int udpErr, tcpErr;
 
+		NET_GetLocalAddress();
+
+		// automatically scan for a valid port, so multiple
+		// dedicated servers can be started without requiring
+		// a different net_port for each one
+
+		// AI UDP/TCP port must be the same (to simplify discovery)
 		for ( int i=0 ; i < 20 ; i++ ) {
 			ai_udp_socket = NET_AISocketUDP( net_ai_ip->string, port + i, &udpErr );
 			if (ai_udp_socket == INVALID_SOCKET && udpErr != EAFNOSUPPORT) {
@@ -1129,6 +1128,9 @@ void NET_OpenAI( void )
 		if ( ai_tcp_socket == INVALID_SOCKET )
 			Com_Printf( "WARNING: Couldn't bind AI agent TCP socket to a v4 ip address.\n");
 	}
+
+	if ( ai_udp_socket == INVALID_SOCKET && ai_tcp_socket == INVALID_SOCKET )
+		Cvar_Set( "net_ai_port", "" );
 }
 
 //===================================================================
@@ -1270,8 +1272,7 @@ void NET_Config( qboolean enableNetworking ) {
 	if ( start ) {
 		if ( net_enabled->integer )
 			NET_OpenIP();
-		if ( net_ai_enabled->integer )
-			NET_OpenAI();
+		NET_OpenAI();
 	}
 }
 

@@ -707,7 +707,15 @@ static qboolean GLimp_StartDriverAndSetMode(glconfig_t *glConfig, const windowDe
 		fullscreen = qfalse;
 	}
 
-	err = GLimp_SetMode(glConfig, windowDesc, CLIENT_WINDOW_TITLE, mode, fullscreen, noborder);
+	char windowTitle[128];
+	int aiPort = Cvar_VariableIntegerValue("net_ai_port");
+	if (aiPort) {
+		Com_sprintf(windowTitle, sizeof(windowTitle),  "%s AI Port %d", CLIENT_WINDOW_TITLE, aiPort);
+	} else {
+		Q_strncpyz(windowTitle, CLIENT_WINDOW_TITLE, sizeof(windowTitle));
+	}
+
+	err = GLimp_SetMode(glConfig, windowDesc, windowTitle, mode, fullscreen, noborder);
 
 	switch ( err )
 	{
