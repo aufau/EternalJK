@@ -993,8 +993,11 @@ void SCR_DebugGraph (float value, int color);	// FIXME: move logging to common?
 qboolean AI_AcceptConnection( const netadr_t *from );
 // accept TCP connection
 
-void AI_RecvData( const byte *data, int dataSize );
+void AI_RecvStreamData( const byte *data, int dataSize );
 // receive streaming (TCP) socket data
+
+void AI_RecvPacket( const netadr_t *from, const byte *data, int dataLen );
+// receive packet (UDP) data
 
 void AI_RecordSysEvent(const sysEvent_t *ev);
 // record system event

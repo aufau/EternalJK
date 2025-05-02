@@ -89,9 +89,12 @@ qboolean CL_ConnectedToRemoteServer( void ) {
 void AI_RecordSysEvent(const sysEvent_t *ev) {
 }
 
-void AI_RecvData( const byte *data, int dataSize ) {
+void AI_RecvStreamData( const byte *data, int dataSize ) {
 }
 
 qboolean AI_AcceptConnection( const netadr_t *from ) {
 	return qfalse;
+}
+
+void AI_RecvPacket( const netadr_t *from, const byte *data, int dataLen ) {
 }

@@ -105,8 +105,9 @@ static struct sockaddr_in	socksRelayAddr;
 
 static SOCKET	ip_socket = INVALID_SOCKET;
 static SOCKET	socks_socket = INVALID_SOCKET;
-static SOCKET	ai_ip_socket = INVALID_SOCKET;
-static SOCKET	ai_agent_socket = INVALID_SOCKET;
+static SOCKET	ai_tcp_socket = INVALID_SOCKET;
+static SOCKET	ai_udp_socket = INVALID_SOCKET;
+static SOCKET	ai_agent_socket = INVALID_SOCKET; // connected agent TCP socket
 
 static netadr_t ai_agent_netadr;
 
@@ -255,7 +256,7 @@ Receive one packet
 int	recvfromCount;
 #endif
 
-static qboolean NET_UDPGetPacket( SOCKET socket, netadr_t *net_from, msg_t *net_message ) {
+static qboolean NET_GetPacket( netadr_t *net_from, msg_t *net_message ) {
 	int ret, err;
 	socklen_t fromlen;
 	struct sockaddr_in from;
@@ -268,7 +269,7 @@ static qboolean NET_UDPGetPacket( SOCKET socket, netadr_t *net_from, msg_t *net_
 #ifdef _DEBUG
 	recvfromCount++;		// performance check
 #endif
-	ret = recvfrom( socket, (char *)net_message->data, net_message->maxsize, 0, (struct sockaddr *)&from, &fromlen );
+	ret = recvfrom( ip_socket, (char *)net_message->data, net_message->maxsize, 0, (struct sockaddr *)&from, &fromlen );
 
 	if ( ret == SOCKET_ERROR ) {
 		err = socketError;
@@ -276,7 +277,7 @@ static qboolean NET_UDPGetPacket( SOCKET socket, netadr_t *net_from, msg_t *net_
 		if( err == EAGAIN || err == ECONNRESET )
 			return qfalse;
 
-		Com_Printf( "NET_UDPGetPacket: %s\n", NET_ErrorString() );
+		Com_Printf( "NET_GetPacket: %s\n", NET_ErrorString() );
 		return qfalse;
 	}
 
@@ -300,11 +301,46 @@ static qboolean NET_UDPGetPacket( SOCKET socket, netadr_t *net_from, msg_t *net_
 	}
 
 	if( ret >= net_message->maxsize ) {
-		Com_Printf( "NET_UDPGetPacket: Oversize packet from %s\n", NET_AdrToString (net_from) );
+		Com_Printf( "NET_GetPacket: Oversize packet from %s\n", NET_AdrToString (net_from) );
 		return qfalse;
 	}
 
 	net_message->cursize = ret;
+	return qtrue;
+}
+
+static qboolean NET_UDPGetPacket( SOCKET socket, netadr_t *net_from, byte *data, int maxsize, int *dataLen ) {
+	int ret, err;
+	socklen_t fromlen;
+	struct sockaddr_in from;
+
+	if ( socket == INVALID_SOCKET ) {
+		return qfalse;
+	}
+
+	fromlen = sizeof( from );
+	ret = recvfrom( socket, (char *)data, maxsize, 0, (struct sockaddr *)&from, &fromlen );
+
+	if ( ret == SOCKET_ERROR ) {
+		err = socketError;
+
+		if( err == EAGAIN || err == ECONNRESET )
+			return qfalse;
+
+		Com_Printf( "NET_UDPGetPacket: %s\n", NET_ErrorString() );
+		return qfalse;
+	}
+
+	memset( from.sin_zero, 0, 8 );
+	memset( net_from, 0, sizeof(netadr_t) );
+	SockadrToNetadr( &from, net_from );
+
+	if( ret >= maxsize ) {
+		Com_Printf( "NET_UDPGetPacket: Oversize packet from %s\n", NET_AdrToString (net_from) );
+		return qfalse;
+	}
+
+	*dataLen = ret;
 	return qtrue;
 }
 
@@ -368,15 +404,6 @@ static SOCKET NET_TCPAcceptConnection( SOCKET socket, netadr_t *net_from ) {
 
 static void NET_TCPCloseConnection( SOCKET socket ) {
 	closesocket(socket);
-}
-
-
-static qboolean NET_GetPacket( netadr_t *net_from, msg_t *net_message ) {
-	return NET_UDPGetPacket( ip_socket, net_from, net_message );
-}
-
-static int NET_AIReadData( byte *data, int maxsize ) {
-	return NET_TCPReadData( ai_agent_socket, data, maxsize );
 }
 
 //=============================================================================
@@ -573,7 +600,7 @@ static SOCKET NET_IPSocket( const char *net_interface, int port, int *err ) {
 NET_AISocket
 ====================
 */
-static SOCKET NET_AISocket( const char *net_interface, int port, int *err ) {
+static SOCKET NET_AISocketTCP( const char *net_interface, int port, int *err ) {
 	SOCKET				newsocket;
 	struct sockaddr_in	address;
 	u_long				_true = 1;
@@ -630,6 +657,63 @@ static SOCKET NET_AISocket( const char *net_interface, int port, int *err ) {
 	int backlog = 2; // number of incoming connections queued by OS
 	if ( listen( newsocket, backlog ) ) {
 		Com_Printf( "WARNING: NET_AISocket: listen: %s\n", NET_ErrorString() );
+		*err = socketError;
+		closesocket( newsocket );
+		return INVALID_SOCKET;
+	}
+
+	return newsocket;
+}
+
+static SOCKET NET_AISocketUDP( const char *net_interface, int port, int *err ) {
+	SOCKET				newsocket;
+	struct sockaddr_in	address;
+	u_long				_true = 1;
+
+	*err = 0;
+
+	if( net_interface ) {
+		Com_Printf( "Opening AI socket: %s:%i\n", net_interface, port );
+	}
+	else {
+		Com_Printf( "Opening AI socket: localhost:%i\n", port );
+	}
+
+	if( ( newsocket = socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP ) ) == INVALID_SOCKET ) {
+		*err = socketError;
+		Com_Printf( "WARNING: NET_AISocket: socket: %s\n", NET_ErrorString() );
+		return newsocket;
+	}
+
+	// make it non-blocking
+	if( ioctlsocket( newsocket, FIONBIO, &_true ) == SOCKET_ERROR ) {
+		Com_Printf( "WARNING: NET_AISocketUDP: ioctl FIONBIO: %s\n", NET_ErrorString() );
+		*err = socketError;
+		closesocket( newsocket );
+		return INVALID_SOCKET;
+	}
+
+	if( !net_interface || !net_interface[0] || !Q_stricmp(net_interface, "localhost") ) {
+		memset( &address, 0, sizeof( address ) );
+		address.sin_family = AF_INET;
+		address.sin_addr.s_addr = INADDR_ANY;
+	}
+	else {
+		if ( !Sys_StringToSockaddr( net_interface, &address ) ) {
+			closesocket( newsocket );
+			return INVALID_SOCKET;
+		}
+	}
+
+	if( port == PORT_ANY ) {
+		address.sin_port = 0;
+	}
+	else {
+		address.sin_port = htons( (short)port );
+	}
+
+	if( bind( newsocket, (const struct sockaddr *)&address, sizeof(address) ) == SOCKET_ERROR ) {
+		Com_Printf( "WARNING: NET_AISocketUDP: bind: %s\n", NET_ErrorString() );
 		*err = socketError;
 		closesocket( newsocket );
 		return INVALID_SOCKET;
@@ -1010,7 +1094,6 @@ NET_OpenIP
 void NET_OpenAI( void )
 {
 	int port = net_ai_port->integer;
-	int err;
 
 	NET_GetLocalAddress();
 
@@ -1018,23 +1101,33 @@ void NET_OpenAI( void )
 	// dedicated servers can be started without requiring
 	// a different net_port for each one
 
+	// AI UDP/TCP port must be the same (to simplify discovery)
 	if ( net_ai_enabled->integer & NET_ENABLEV4 ) {
-		for ( int i=0 ; i < 20 ; i++ ) {
-			ai_ip_socket = NET_AISocket( net_ai_ip->string, port + i, &err );
-			if ( ai_ip_socket != INVALID_SOCKET ) {
-				Cvar_SetValue( "net_ai_port", port + i );
+		int udpErr, tcpErr;
 
-				// if ( net_socksEnabled->integer )
-				// 	NET_OpenSocks( port + i );
-				break;
+		for ( int i=0 ; i < 20 ; i++ ) {
+			ai_udp_socket = NET_AISocketUDP( net_ai_ip->string, port + i, &udpErr );
+			if (ai_udp_socket == INVALID_SOCKET && udpErr != EAFNOSUPPORT) {
+				continue;
 			}
-			else {
-				if ( err == EAFNOSUPPORT )
-					break;
+			ai_tcp_socket = NET_AISocketTCP( net_ai_ip->string, port + i, &tcpErr );
+			if (ai_tcp_socket == INVALID_SOCKET && tcpErr != EAFNOSUPPORT) {
+				closesocket(ai_udp_socket);
+				ai_udp_socket = INVALID_SOCKET;
+				continue;
 			}
+
+			Cvar_SetValue( "net_ai_port", port + i );
+
+			// if ( net_socksEnabled->integer )
+			// 	NET_OpenSocks( port + i );
+
+			break;
 		}
-		if ( ai_ip_socket == INVALID_SOCKET )
-			Com_Printf( "WARNING: Couldn't bind to a v4 ip address.\n");
+		if ( ai_udp_socket == INVALID_SOCKET )
+			Com_Printf( "WARNING: Couldn't bind AI agent UDP socket to a v4 ip address.\n");
+		if ( ai_tcp_socket == INVALID_SOCKET )
+			Com_Printf( "WARNING: Couldn't bind AI agent TCP socket to a v4 ip address.\n");
 	}
 }
 
@@ -1163,9 +1256,14 @@ void NET_Config( qboolean enableNetworking ) {
 			ai_agent_socket = INVALID_SOCKET;
 		}
 
-		if ( ai_ip_socket != INVALID_SOCKET ) {
-			closesocket( ai_ip_socket );
-			ai_ip_socket = INVALID_SOCKET;
+		if ( ai_tcp_socket != INVALID_SOCKET ) {
+			closesocket( ai_tcp_socket );
+			ai_tcp_socket = INVALID_SOCKET;
+		}
+
+		if ( ai_udp_socket != INVALID_SOCKET ) {
+			closesocket( ai_udp_socket );
+			ai_udp_socket = INVALID_SOCKET;
 		}
 	}
 
@@ -1245,12 +1343,27 @@ void NET_IPEvent( void )
 	}
 }
 
-void NET_AI_IPEvent( void )
+void NET_AI_UDPEvent( void )
+{
+	byte data[2048];
+	int dataLen;
+	netadr_t from;
+
+	while (1) {
+		if (NET_UDPGetPacket(ai_udp_socket, &from, data, sizeof(data), &dataLen)) {
+			AI_RecvPacket(&from, data, dataLen);
+		} else {
+			break;
+		}
+	}
+}
+
+void NET_AI_TCPEvent( void )
 {
 	netadr_t from;
 	SOCKET newsocket;
 
-	newsocket = NET_TCPAcceptConnection(ai_ip_socket, &from);
+	newsocket = NET_TCPAcceptConnection(ai_tcp_socket, &from);
 
 	if (AI_AcceptConnection(&from)) {
 		if (ai_agent_socket != INVALID_SOCKET) {
@@ -1264,18 +1377,18 @@ void NET_AI_IPEvent( void )
 	}
 }
 
-void NET_AI_AgentEvent( void )
+void NET_AI_TCPAgentEvent( void )
 {
 	byte data[4096];
 
 	while(1)
 	{
-		int datalen = NET_AIReadData(data, sizeof(data));
+		int datalen = NET_TCPReadData(ai_agent_socket, data, sizeof(data));
 
 		if(datalen <= 0)
 			break;
 
-		AI_RecvData(data, datalen);
+		AI_RecvStreamData(data, datalen);
 	}
 }
 
@@ -1290,10 +1403,12 @@ void NET_Event(fd_set *fdr)
 {
 	if (FD_ISSET(ip_socket, fdr))
 		NET_IPEvent();
-	if (FD_ISSET(ai_ip_socket, fdr))
-		NET_AI_IPEvent();
+	if (FD_ISSET(ai_tcp_socket, fdr))
+		NET_AI_TCPEvent();
 	if (FD_ISSET(ai_agent_socket, fdr))
-		NET_AI_AgentEvent();
+		NET_AI_TCPAgentEvent();
+	if (FD_ISSET(ai_udp_socket, fdr))
+		NET_AI_UDPEvent();
 }
 
 /*
@@ -1317,15 +1432,18 @@ void NET_Sleep( int msec ) {
 		FD_SET(ip_socket, &fdset); // network socket
 		highestfd = ip_socket;
 	}
-	if (ai_ip_socket != INVALID_SOCKET) {
-		FD_SET(ai_ip_socket, &fdset); // network socket
-		highestfd = ai_ip_socket > highestfd ? ai_ip_socket : highestfd;
+	if (ai_tcp_socket != INVALID_SOCKET) {
+		FD_SET(ai_tcp_socket, &fdset); // network socket
+		highestfd = ai_tcp_socket > highestfd ? ai_tcp_socket : highestfd;
 	}
 	if (ai_agent_socket != INVALID_SOCKET) {
 		FD_SET(ai_agent_socket, &fdset); // network socket
 		highestfd = ai_agent_socket > highestfd ? ai_agent_socket : highestfd;
 	}
-
+	if (ai_udp_socket != INVALID_SOCKET) {
+		FD_SET(ai_udp_socket, &fdset); // network socket
+		highestfd = ai_udp_socket > highestfd ? ai_udp_socket : highestfd;
+	}
 #ifdef _WIN32
 	if(highestfd == INVALID_SOCKET)
 	{

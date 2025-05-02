@@ -46,6 +46,7 @@ struct aiStatic_s {
 	jsonBufferedStream_t jpbs;
 	char evBuf[AI_MAX_EVENT_SIZE + 1]; // extra byte for \0
 	aiEventStream_t evStream;
+	netadr_t udpAgentAdr;
 };
 
 struct aiStatic_s ais;
@@ -354,31 +355,52 @@ void AI_RecordSysEvent(const sysEvent_t *ev)
 	FS_Write(json, strlen(json), com_actionDataF);
 }
 
-static void AI_PacketEvent( const char *event )
+void AI_AgentMessage( const char *msg )
 {
 	int type, value, value2;
 	int ret;
 
-	Com_DPrintf("AI_PacketEvent(): %s", event);
-	ret = sscanf(event, "%d;%d;%d", &type, &value, &value2);
+	Com_DPrintf("AI_AgentMessage: %s", msg);
+	ret = sscanf(msg, "%d;%d;%d", &type, &value, &value2);
 
 	if (ret == 3) {
 		if (!Key_GetCatcher()) {
 			Sys_QueEvent(0, (sysEventType_t)type, value, value2, 0, 0);
 		}
 	} else {
-		Com_Printf("AI_PacketEvent() ignoring malformed event: %s\n", event);
+		Com_Printf("WARNING AI_AgentMessage: ignoring malformed message: %s\n", msg);
 	}
+}
+
+void AI_RecvPacket( const netadr_t *from, const byte *data, int dataLen )
+{
+	char event[64];
+
+	// if (!NET_CompareAdr(from, &ais.udpAgentAdr)) {
+	if (memcmp(from, &ais.udpAgentAdr, sizeof(netadr_t))) {
+		Com_Printf("UDP AI Agent connected from %s\n", NET_AdrToString(from));
+		ais.udpAgentAdr = *from;
+	}
+
+	if (dataLen + 1 > (int)sizeof(event)) {
+		Com_Printf("WARNING AI_RecvPacket: ignoring overside packet from AI Agent\n");
+		return;
+	}
+
+	memcpy(event, data, dataLen);
+	event[dataLen + 1] = '\0';
+
+	AI_AgentMessage(event);
 }
 
 qboolean AI_AcceptConnection( const netadr_t *from )
 {
-	Com_Printf("AI Agent connected from %s\n", NET_AdrToString(from));
-	AI_InitEventStream(&ais.evStream, ais.evBuf, sizeof(ais.evBuf), AI_PacketEvent);
+	Com_Printf("TCP AI Agent connected from %s\n", NET_AdrToString(from));
+	AI_InitEventStream(&ais.evStream, ais.evBuf, sizeof(ais.evBuf), AI_AgentMessage);
 	return qtrue;
 }
 
-void AI_RecvData( const byte *data, int dataSize ) {
+void AI_RecvStreamData( const byte *data, int dataSize ) {
 	if (AI_IsEventStreamOpen(&ais.evStream)) {
 		AI_EventStreamWrite(&ais.evStream, (const char *)data, dataSize);
 	}
