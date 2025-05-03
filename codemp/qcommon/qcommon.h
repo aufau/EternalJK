@@ -990,6 +990,8 @@ void SCR_DebugGraph (float value, int color);	// FIXME: move logging to common?
 // AVI files have the start of pixel lines 4 byte-aligned
 #define AVI_LINE_PADDING 4
 
+void AI_Init( void );
+
 qboolean AI_AcceptConnection( const netadr_t *from );
 // accept TCP connection
 

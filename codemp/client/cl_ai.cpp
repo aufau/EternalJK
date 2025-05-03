@@ -23,6 +23,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "client.h"
 #include "qcommon/json.h"
 
+cvar_t	*ai_debugMsg;
+
 extern netField_t playerStateFields[];
 extern int playerStateFieldsNum;
 
@@ -399,12 +401,14 @@ static void AI_MessageStreamVerify(int messageNumber)
 	}
 }
 
-void AI_AgentMessage( const char *msg )
+static void AI_AgentMessage( const char *msg )
 {
 	int type, value, value2, messageNumber, version;
 	int ret;
 
-	Com_DPrintf("AI_AgentMessage: %s\n", msg);
+	if (ai_debugMsg->integer >= 2)
+		Com_Printf("AI_AgentMessage: %s\n", msg);
+
 	ret = sscanf(msg, "%d;%d;%d;%d;%d", &version, &messageNumber, &type, &value, &value2);
 
 	if (version > 1) {
@@ -412,7 +416,8 @@ void AI_AgentMessage( const char *msg )
 		return;
 	}
 
-	AI_MessageStreamVerify(messageNumber);
+	if (ai_debugMsg->integer)
+		AI_MessageStreamVerify(messageNumber);
 
 	if (ret == 5) {
 		if (!Key_GetCatcher()) {
@@ -456,8 +461,14 @@ qboolean AI_AcceptConnection( const netadr_t *from )
 	return qtrue;
 }
 
-void AI_RecvStreamData( const byte *data, int dataSize ) {
+void AI_RecvStreamData( const byte *data, int dataSize )
+{
 	if (AI_IsEventStreamOpen(&ais.evStream)) {
 		AI_EventStreamWrite(&ais.evStream, (const char *)data, dataSize);
 	}
+}
+
+void AI_Init( void )
+{
+	ai_debugMsg = Cvar_Get("ai_debugMsg", "1", CVAR_TEMP);
 }

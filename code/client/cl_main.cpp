@@ -1378,4 +1378,3 @@ void CL_Shutdown( void ) {
 
 	Com_Printf( "-----------------------\n" );
 }
-
