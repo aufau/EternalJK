@@ -388,7 +388,7 @@ void AI_RecvPacket( const netadr_t *from, const byte *data, int dataLen )
 	}
 
 	memcpy(event, data, dataLen);
-	event[dataLen + 1] = '\0';
+	event[dataLen] = '\0';
 
 	AI_AgentMessage(event);
 }
