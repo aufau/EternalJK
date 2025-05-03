@@ -401,15 +401,20 @@ static void AI_MessageStreamVerify(int messageNumber)
 
 void AI_AgentMessage( const char *msg )
 {
-	int type, value, value2, messageNumber;
+	int type, value, value2, messageNumber, version;
 	int ret;
 
 	Com_DPrintf("AI_AgentMessage: %s\n", msg);
-	ret = sscanf(msg, "%d;%d;%d;%d", &messageNumber, &type, &value, &value2);
+	ret = sscanf(msg, "%d;%d;%d;%d;%d", &version, &messageNumber, &type, &value, &value2);
+
+	if (version > 1) {
+		Com_Printf("WARNING AI_AgentMessage: dropping message in protocol version %d. this client supports only protocol version 1\n");
+		return;
+	}
 
 	AI_MessageStreamVerify(messageNumber);
 
-	if (ret == 4) {
+	if (ret == 5) {
 		if (!Key_GetCatcher()) {
 			Sys_QueEvent(0, (sysEventType_t)type, value, value2, 0, 0);
 		}
