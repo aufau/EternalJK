@@ -991,6 +991,7 @@ void SCR_DebugGraph (float value, int color);	// FIXME: move logging to common?
 #define AVI_LINE_PADDING 4
 
 void AI_Init( void );
+void AI_FinishMove( const usercmd_t *cmd );
 
 qboolean AI_AcceptConnection( const netadr_t *from );
 // accept TCP connection

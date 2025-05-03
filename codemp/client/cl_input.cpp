@@ -1361,6 +1361,7 @@ usercmd_t CL_CreateCmd( void ) {
 
 	// store out the final values
 	CL_FinishMove( &cmd );
+	AI_FinishMove( &cmd );
 
 	// draw debug graphs of turning for mouse testing
 	if ( cl_debugMove->integer ) {

@@ -42,6 +42,7 @@ typedef struct aiEventStream_s {
 } aiEventStream_t;
 
 #define AI_MAX_EVENT_SIZE 64
+#define AI_MSG_BACKUP 256
 
 struct aiStatic_s {
 	jsonPrinter_t	jp;
@@ -51,6 +52,8 @@ struct aiStatic_s {
 	netadr_t udpAgentAdr;
 	int messageNumber; // highest received message number
 	uint32_t messageBitmask; // received flags for last 32 message numbers
+	int cmdClientTimes[AI_MSG_BACKUP];
+	int cmdMessageNumbers[AI_MSG_BACKUP];
 };
 
 struct aiStatic_s ais;
@@ -275,6 +278,17 @@ static void AI_JP_EntityState(const entityState_t *es)
 	AI_JP_ObjectEnd();
 }
 
+static int AI_MessageNumberAtClientTime( int clientTime )
+{
+	for (int i = 0; i < AI_MSG_BACKUP; i++) {
+		if (ais.cmdClientTimes[i] == clientTime) {
+			return ais.cmdMessageNumbers[i];
+		}
+	}
+
+	return -1;
+}
+
 void AI_RecordClientSnapshot(const clSnapshot_t *snap)
 {
 	char buf[4096];
@@ -283,6 +297,9 @@ void AI_RecordClientSnapshot(const clSnapshot_t *snap)
 
 	AI_JP_ObjectStart();
 	{
+		int messageNumber = AI_MessageNumberAtClientTime(snap->ps.commandTime);
+
+		AI_JP_Key("messageNumber"); AI_JP_Int32(messageNumber);
 		AI_JP_Key("frame"); AI_JP_Int32(com_frameNumber);
 		// AI_JP_Key("valid"); AI_JP_Bool(snap->valid);
 		// AI_JP_Key("snapFlags"); AI_JP_Int32(snap->snapFlags);
@@ -458,6 +475,9 @@ qboolean AI_AcceptConnection( const netadr_t *from )
 	AI_MessageStreamReset();
 	AI_InitEventStream(&ais.evStream, ais.evBuf, sizeof(ais.evBuf), AI_AgentMessage);
 
+	memset(ais.cmdClientTimes, 0, sizeof(ais.cmdClientTimes));
+	memset(ais.cmdMessageNumbers, 0, sizeof(ais.cmdMessageNumbers));
+
 	return qtrue;
 }
 
@@ -471,4 +491,15 @@ void AI_RecvStreamData( const byte *data, int dataSize )
 void AI_Init( void )
 {
 	ai_debugMsg = Cvar_Get("ai_debugMsg", "1", CVAR_TEMP);
+}
+
+void AI_FinishMove( const usercmd_t *cmd )
+{
+	// save latest messageNumber affecting this usercmd_t
+	//
+	// this logic is only correct if ai agent messages are always
+	// received in-order
+
+	ais.cmdMessageNumbers[cl.cmdNumber % AI_MSG_BACKUP] = ais.messageNumber;
+	ais.cmdClientTimes[cl.cmdNumber % AI_MSG_BACKUP] = cmd->serverTime;
 }
