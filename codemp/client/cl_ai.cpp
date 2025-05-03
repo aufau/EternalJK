@@ -47,6 +47,8 @@ struct aiStatic_s {
 	char evBuf[AI_MAX_EVENT_SIZE + 1]; // extra byte for \0
 	aiEventStream_t evStream;
 	netadr_t udpAgentAdr;
+	int messageNumber; // highest received message number
+	uint32_t messageBitmask; // received flags for last 32 message numbers
 };
 
 struct aiStatic_s ais;
@@ -355,15 +357,59 @@ void AI_RecordSysEvent(const sysEvent_t *ev)
 	FS_Write(json, strlen(json), com_actionDataF);
 }
 
+static void AI_MessageStreamReset(void)
+{
+	ais.messageNumber = 0;
+	ais.messageBitmask = 0;
+}
+
+static void AI_MessageStreamVerify(int messageNumber)
+{
+	qboolean duplicate = qfalse;
+
+	if (messageNumber <= ais.messageNumber) {
+		int messageNumberDelta = ais.messageNumber - messageNumber;
+		if (messageNumberDelta >= 0 && messageNumberDelta < 32) {
+			if (ais.messageBitmask & (1 << messageNumberDelta)) {
+				Com_Printf("WARNING AI_AgentMessage: received duplicate message\n");
+				duplicate = qtrue;
+			}
+		}
+	}
+
+	if (!duplicate && messageNumber != ais.messageNumber + 1)
+		Com_Printf("WARNING AI_AgentMessage: received out-of-order message\n");
+
+	if (messageNumber > ais.messageNumber) {
+		if (messageNumber >= ais.messageNumber + 32) {
+			Com_Printf("WARNING AI_AgentMessage: resynchronizing message stream\n");
+			ais.messageBitmask = -1; // mark as received
+			ais.messageNumber = messageNumber;
+		} else {
+			while (ais.messageNumber < messageNumber) {
+				if (ais.messageNumber >= 32 && (ais.messageBitmask & (1 << 31)) == 0)
+					Com_Printf("WARNING AI_AgentMessage: dropped message\n");
+
+				ais.messageNumber++;
+				ais.messageBitmask <<= 1;
+			}
+
+			ais.messageBitmask |= 1;
+		}
+	}
+}
+
 void AI_AgentMessage( const char *msg )
 {
-	int type, value, value2;
+	int type, value, value2, messageNumber;
 	int ret;
 
-	Com_DPrintf("AI_AgentMessage: %s", msg);
-	ret = sscanf(msg, "%d;%d;%d", &type, &value, &value2);
+	Com_DPrintf("AI_AgentMessage: %s\n", msg);
+	ret = sscanf(msg, "%d;%d;%d;%d", &messageNumber, &type, &value, &value2);
 
-	if (ret == 3) {
+	AI_MessageStreamVerify(messageNumber);
+
+	if (ret == 4) {
 		if (!Key_GetCatcher()) {
 			Sys_QueEvent(0, (sysEventType_t)type, value, value2, 0, 0);
 		}
@@ -380,6 +426,8 @@ void AI_RecvPacket( const netadr_t *from, const byte *data, int dataLen )
 	if (memcmp(from, &ais.udpAgentAdr, sizeof(netadr_t))) {
 		Com_Printf("UDP AI Agent connected from %s\n", NET_AdrToString(from));
 		ais.udpAgentAdr = *from;
+		AI_MessageStreamReset();
+
 	}
 
 	if (dataLen + 1 > (int)sizeof(event)) {
@@ -396,7 +444,10 @@ void AI_RecvPacket( const netadr_t *from, const byte *data, int dataLen )
 qboolean AI_AcceptConnection( const netadr_t *from )
 {
 	Com_Printf("TCP AI Agent connected from %s\n", NET_AdrToString(from));
+
+	AI_MessageStreamReset();
 	AI_InitEventStream(&ais.evStream, ais.evBuf, sizeof(ais.evBuf), AI_AgentMessage);
+
 	return qtrue;
 }
 
