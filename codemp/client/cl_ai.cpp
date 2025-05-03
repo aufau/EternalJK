@@ -299,8 +299,8 @@ void AI_RecordClientSnapshot(const clSnapshot_t *snap)
 	{
 		int messageNumber = AI_MessageNumberAtClientTime(snap->ps.commandTime);
 
-		AI_JP_Key("messageNumber"); AI_JP_Int32(messageNumber);
-		AI_JP_Key("frame"); AI_JP_Int32(com_frameNumber);
+		AI_JP_Key("aiMessageNumber"); AI_JP_Int32(messageNumber);
+		AI_JP_Key("aiFrame"); AI_JP_Int32(cl.cmdNumber);
 		// AI_JP_Key("valid"); AI_JP_Bool(snap->valid);
 		// AI_JP_Key("snapFlags"); AI_JP_Int32(snap->snapFlags);
 		AI_JP_Key("serverTime"); AI_JP_Int32(snap->serverTime);
